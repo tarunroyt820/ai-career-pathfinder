@@ -1,4 +1,5 @@
-import { useState } from "react";
+import React from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { Navbar } from "./components/layout/Navbar";
 import { HeroSection } from "./components/landing/HeroSection";
 import { FeaturesSection } from "./components/landing/FeaturesSection";
@@ -8,29 +9,48 @@ import { CTASection } from "./components/landing/CTASection";
 import { Footer } from "./components/layout/Footer";
 import { AuthPage } from "./components/auth/AuthPage";
 import { Dashboard } from "./components/dashboard/Dashboard";
+import { ProtectedRoute } from "./components/auth/ProtectedRoute";
+import { Toaster } from "sonner";
+
+const PublicRoute = ({ children }: { children: React.ReactNode }) => {
+    const token = localStorage.getItem("nextro_token");
+    if (token) return <Navigate to="/dashboard/overview" replace />;
+    return children;
+};
 
 export default function App() {
-    const [currentView, setCurrentView] = useState<"landing" | "login" | "signup" | "dashboard">("landing");
-
-    if (currentView === "login" || currentView === "signup") {
-        return <AuthPage mode={currentView} onNavigate={setCurrentView} />;
-    }
-
-    if (currentView === "dashboard") {
-        return <Dashboard onNavigate={setCurrentView} />;
-    }
-
     return (
-        <div className="min-h-screen bg-background">
-            <Navbar onNavigate={setCurrentView} />
-            <main>
-                <HeroSection onNavigate={setCurrentView} />
-                <FeaturesSection />
-                <HowItWorksSection />
-                <TestimonialsSection />
-                <CTASection onNavigate={setCurrentView} />
-            </main>
-            <Footer />
+        <div className="min-h-screen bg-background text-foreground">
+            <Toaster position="top-right" />
+            <Routes>
+                {/* Public Routes */}
+                <Route
+                    path="/"
+                    element={
+                        <>
+                            <Navbar />
+                            <main>
+                                <HeroSection />
+                                <FeaturesSection />
+                                <HowItWorksSection />
+                                <TestimonialsSection />
+                                <CTASection />
+                            </main>
+                            <Footer />
+                        </>
+                    }
+                />
+                <Route path="/login" element={<PublicRoute><AuthPage mode="login" /></PublicRoute>} />
+                <Route path="/signup" element={<PublicRoute><AuthPage mode="signup" /></PublicRoute>} />
+
+                {/* Protected Dashboard Routes */}
+                <Route element={<ProtectedRoute />}>
+                    <Route path="/dashboard/*" element={<Dashboard />} />
+                </Route>
+
+                {/* Fallback */}
+                <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
         </div>
     );
 }

@@ -1,74 +1,112 @@
-"use client";
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Brain, Compass, GraduationCap, LineChart, RefreshCw, Shield } from "lucide-react";
+import { Brain, Compass, GraduationCap, LineChart, RefreshCw, Shield, Zap, Sparkles, ChevronRight } from "lucide-react";
+import { Button } from "@/components/common/Button";
 
 const features = [
   {
     icon: Brain,
-    title: "AI Career Analysis",
-    description: "Our advanced AI analyzes your skills, experience, and interests to identify your perfect career matches with detailed insights.",
+    title: "AI Analysis",
+    description: "Neural networks that scan your trajectory and predict high-yield career pivots before the market does.",
+    color: "from-blue-500/20 to-cyan-500/20",
+    iconColor: "text-blue-500"
   },
   {
     icon: Compass,
-    title: "Personalized Roadmap",
-    description: "Get a step-by-step career roadmap tailored to your goals, including recommended skills, certifications, and milestones.",
+    title: "Live Roadmaps",
+    description: "Step-by-step navigation that recalculates as you gain skills, ensuring you never take a wrong turn.",
+    color: "from-purple-500/20 to-pink-500/20",
+    iconColor: "text-purple-500"
   },
   {
     icon: RefreshCw,
-    title: "Skill Exchange",
-    description: "Connect with other professionals to exchange knowledge. Teach what you know, learn what you need.",
+    title: "Skill Marketplace",
+    description: "Trade your expertise in a verified network. Teach React, learn Rust, and grow your professional social capital.",
+    color: "from-orange-500/20 to-red-500/20",
+    iconColor: "text-orange-500"
   },
   {
     icon: GraduationCap,
-    title: "Learning Paths",
-    description: "Access curated learning resources and courses aligned with your career goals and skill gaps.",
+    title: "Curated Learning",
+    description: "No more tutorial hell. Get direct access to high-impact resources verified by industry experts.",
+    color: "from-green-500/20 to-emerald-500/20",
+    iconColor: "text-green-500"
   },
   {
     icon: LineChart,
-    title: "Progress Tracking",
-    description: "Monitor your growth with detailed analytics, skill assessments, and milestone achievements.",
+    title: "Growth Metrics",
+    description: "Visualize your market value. Track your mastery levels against global benchmarks in real-time.",
+    color: "from-indigo-500/20 to-blue-500/20",
+    iconColor: "text-indigo-500"
   },
   {
     icon: Shield,
-    title: "Industry Insights",
-    description: "Stay ahead with real-time market trends, salary data, and demand forecasts for your target roles.",
+    title: "Elite Network",
+    description: "Join a gated community of builders. Verified credentials ensure high-quality exchanges every time.",
+    color: "from-amber-500/20 to-orange-500/20",
+    iconColor: "text-amber-500"
   },
 ];
 
 export function FeaturesSection() {
   return (
-    <section id="features" className="bg-muted/40 px-4 py-24 sm:px-6 sm:py-32 lg:px-8">
-      <div className="mx-auto max-w-7xl">
+    <section id="features" className="relative px-4 py-32 sm:px-6 lg:px-8 overflow-hidden bg-background">
+      {/* Precision grid pattern */}
+      <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: `radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)`, backgroundSize: '40px 40px' }} />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-[radial-gradient(circle_at_center,rgba(var(--primary-rgb),0.08)_0%,transparent_70%)]" />
+
+      <div className="mx-auto max-w-7xl relative z-10">
         {/* Section Header */}
-        <div className="mx-auto max-w-2xl text-center">
-          <h2 className="text-balance text-3xl font-bold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
-            Everything You Need to Accelerate Your Career
-          </h2>
-          <p className="mt-6 text-pretty text-lg leading-relaxed text-muted-foreground">
-            Powerful features designed to help you discover, plan, and achieve your career goals.
-          </p>
+        <div className="flex flex-col lg:flex-row items-end justify-between gap-12 mb-32">
+          <div className="max-w-2xl space-y-8">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase tracking-[0.2em] border border-primary/20">
+              <Zap className="h-3 w-3" />
+              Core Capabilities
+            </div>
+            <h2 className="text-5xl md:text-7xl font-black tracking-tight leading-[0.9] text-foreground">
+              Supercharge your <br />
+              <span className="text-gradient">Professional Engine.</span>
+            </h2>
+            <p className="text-lg md:text-xl font-medium text-muted-foreground leading-relaxed">
+              Nextaro isn't a simple dashboard—it's a high-precision neural command center <br className="hidden md:block" /> for your entire global career trajectory.
+            </p>
+          </div>
+          <Button variant="outline" className="h-16 px-10 rounded-2xl font-black uppercase tracking-[0.2em] gap-3 group border-border hover:bg-muted/50 text-xs text-foreground">
+            System Documentation
+            <ChevronRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
+          </Button>
         </div>
 
         {/* Features Grid */}
-        <div className="mt-20 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {features.map((feature) => (
-            <Card
-              key={feature.title}
-              className="group rounded-3xl border-border/50 bg-card shadow-lg shadow-black/5 transition-all duration-300 hover:-translate-y-1 hover:border-primary/20 hover:shadow-xl hover:shadow-primary/10"
-            >
-              <CardHeader className="pb-4">
-                <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 transition-colors group-hover:bg-primary/15">
-                  <feature.icon className="h-7 w-7 text-primary" />
+        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+          {features.map((feature, i) => (
+            <div key={i} className="group relative">
+              {/* Outer Glow */}
+              <div className={`absolute inset-0 bg-gradient-to-br ${feature.color} opacity-0 group-hover:opacity-40 blur-[80px] transition-opacity duration-700`} />
+
+              <div className="relative h-full p-10 lg:p-12 rounded-[3.5rem] border border-border/50 bg-card/40 backdrop-blur-3xl transition-all duration-500 hover:translate-y-[-12px] hover:border-primary/30 hover:bg-card/60 shadow-xl shadow-black/5 overflow-hidden">
+                {/* Inner Color Tint */}
+                <div className={`absolute inset-0 bg-gradient-to-br ${feature.color} opacity-0 group-hover:opacity-20 transition-opacity duration-500`} />
+
+                <div className="relative z-10 space-y-8">
+                  <div className={`h-20 w-20 rounded-[1.5rem] bg-muted/30 flex items-center justify-center border border-border transition-all duration-500 group-hover:bg-background group-hover:scale-110 group-hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,0.1)]`}>
+                    <feature.icon className={`h-10 w-10 ${feature.iconColor}`} />
+                  </div>
+
+                  <div className="space-y-4">
+                    <h3 className="text-3xl font-black tracking-tight text-foreground">{feature.title}</h3>
+                    <p className="text-lg font-medium leading-relaxed text-muted-foreground group-hover:text-foreground/80 transition-colors duration-500">
+                      {feature.description}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-4 pt-8 opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-4 group-hover:translate-y-0">
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">LEARN MORE</span>
+                    <div className="h-px flex-grow bg-primary/20" />
+                    <ChevronRight className="h-4 w-4 text-primary" />
+                  </div>
                 </div>
-                <CardTitle className="text-xl font-semibold">{feature.title}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CardDescription className="text-base leading-relaxed">
-                  {feature.description}
-                </CardDescription>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           ))}
         </div>
       </div>

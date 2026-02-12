@@ -1,31 +1,52 @@
-const { mockProfile } = require('../data/mockData');
+const User = require('../models/User');
 
-exports.getProfile = (req, res) => {
-    res.json(mockProfile);
+exports.getProfile = async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        res.json(user);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
 };
 
-exports.updateProfile = (req, res) => {
-    const updates = req.body;
+exports.updateProfile = async (req, res) => {
+    try {
+        const updates = req.body;
 
-    // Update mock in-memory data
-    Object.keys(updates).forEach(key => {
-        if (key in mockProfile) {
-            mockProfile[key] = updates[key];
+        // Remove sensitive fields if present
+        delete updates.password;
+        delete updates.email;
+        delete updates._id;
+
+        const user = await User.findByIdAndUpdate(
+            req.user.id,
+            { $set: updates },
+            { new: true, runValidators: true }
+        );
+
+        res.json({
+            message: "Profile updated successfully",
+            profile: user
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+exports.getPublicProfile = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const user = await User.findById(id).select('-password -email -createdAt');
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
         }
-    });
 
-    res.json({
-        message: "Profile updated successfully (Mock)",
-        profile: mockProfile
-    });
-};
-
-exports.getPublicProfile = (req, res) => {
-    const { id } = req.params;
-    // In mock, we just return the same profile for any ID
-    res.json({
-        ...mockProfile,
-        id: id,
-        isPublic: true
-    });
+        res.json({
+            ...user._doc,
+            isPublic: true
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
 };

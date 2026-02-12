@@ -1,77 +1,105 @@
-"use client";
-
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, ChevronRight, Sparkles, Target, Users, Wand2 } from "lucide-react";
 
 const steps = [
   {
     step: "01",
-    title: "Create Your Profile",
-    description: "Sign up and complete your profile with your skills, experience, interests, and career aspirations.",
-    highlights: ["Skills assessment", "Interest mapping", "Experience history"],
+    title: "Onboarding Protocol",
+    description: "Initialize your profile with our deep-scan assessment covering skills, subconscious interests, and long-term ambition.",
+    icon: Target,
+    highlights: ["Symmetry mapping", "Interest profiling"],
   },
   {
     step: "02",
-    title: "AI Analysis",
-    description: "Our AI analyzes your profile against thousands of career paths to find your best matches.",
-    highlights: ["Pattern recognition", "Market analysis", "Skill gap identification"],
+    title: "AI Synthesis",
+    description: "Our proprietary engine cross-references your profile against 50,000+ career trajectories to identify high-probability matches.",
+    icon: Wand2,
+    highlights: ["Gap recognition", "Market simulation"],
   },
   {
     step: "03",
-    title: "Get Your Roadmap",
-    description: "Receive a personalized career roadmap with actionable steps, timelines, and resources.",
-    highlights: ["Custom milestones", "Learning resources", "Timeline planning"],
+    title: "Deployment Plan",
+    description: "Receive a hyper-granular roadmap with specific skills to master, mentors to find, and milestones to achieve.",
+    icon: Sparkles,
+    highlights: ["Adaptive timelines", "Curated stacks"],
   },
   {
     step: "04",
-    title: "Exchange & Grow",
-    description: "Connect with others to exchange skills, get mentorship, and accelerate your journey.",
-    highlights: ["Peer learning", "Skill exchange", "Community support"],
+    title: "Network Synergy",
+    description: "Enter the community pool to trade skills with verified peers, accelerating mutual growth through direct knowledge exchange.",
+    icon: Users,
+    highlights: ["Verified trading", "Peer validation"],
   },
 ];
 
 export function HowItWorksSection() {
   return (
-    <section id="how-it-works" className="px-4 py-24 sm:px-6 sm:py-32 lg:px-8">
-      <div className="mx-auto max-w-7xl">
+    <section id="how-it-works" className="relative px-4 py-32 sm:px-6 lg:px-8 overflow-hidden bg-background">
+      {/* Decorative gradients */}
+      <div className="absolute top-0 left-1/4 w-[40%] h-[40%] bg-primary/5 rounded-full blur-[120px]" />
+      <div className="absolute bottom-0 right-1/4 w-[30%] h-[30%] bg-accent/5 rounded-full blur-[100px]" />
+
+      <div className="mx-auto max-w-7xl relative z-10">
         {/* Section Header */}
-        <div className="mx-auto max-w-2xl text-center">
-          <h2 className="text-balance text-3xl font-bold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
-            How Nextaro Works
+        <div className="flex flex-col items-center text-center space-y-6 mb-24">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 text-accent text-[10px] font-black uppercase tracking-widest border border-accent/20">
+            <Sparkles className="h-3 w-3" />
+            Operational Protocol
+          </div>
+          <h2 className="text-5xl md:text-7xl font-black tracking-tight leading-[0.9] text-foreground">
+            Automate Your <br />
+            <span className="text-gradient">Evolution.</span>
           </h2>
-          <p className="mt-6 text-pretty text-lg leading-relaxed text-muted-foreground">
-            Four simple steps to transform your career trajectory with AI-powered guidance.
+          <p className="max-w-2xl text-lg md:text-xl font-medium text-muted-foreground leading-relaxed">
+            The Nextaro protocol is engineered for velocity and precision. <br className="hidden md:block" />
+            No friction. No filler. Just your architectural future.
           </p>
         </div>
 
-        {/* Steps */}
-        <div className="mt-20 grid gap-8 lg:grid-cols-2">
-          {steps.map((item) => (
-            <div
-              key={item.step}
-              className="group relative flex gap-6 rounded-3xl border border-border/50 bg-card p-8 shadow-lg shadow-black/5 transition-all duration-300 hover:-translate-y-1 hover:border-primary/20 hover:shadow-xl hover:shadow-primary/10"
-            >
-              {/* Step Number */}
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-primary text-2xl font-bold text-primary-foreground shadow-lg shadow-primary/25">
-                {item.step}
-              </div>
+        {/* Steps Journey Card Grid */}
+        <div className="grid gap-8 lg:grid-cols-4 relative">
+          {steps.map((item, i) => (
+            <div key={i} className="group relative">
+              {/* Background Glow */}
+              <div className="absolute inset-0 bg-primary/20 opacity-0 group-hover:opacity-100 blur-[80px] transition-opacity duration-700" />
 
-              {/* Content */}
-              <div className="flex-1">
-                <h3 className="text-xl font-bold text-foreground">{item.title}</h3>
-                <p className="mt-3 leading-relaxed text-muted-foreground">{item.description}</p>
+              <div className="relative h-full p-8 lg:p-10 rounded-[3rem] bg-card/40 border border-border/50 backdrop-blur-3xl transition-all duration-500 group-hover:translate-y-[-8px] group-hover:border-primary/30 group-hover:bg-card/60 shadow-xl shadow-black/5">
+                {/* Step Header */}
+                <div className="flex flex-col gap-6 mb-8">
+                  <div className="flex items-center justify-between">
+                    <div className="h-16 w-16 rounded-2xl bg-muted/30 flex items-center justify-center border border-border group-hover:bg-primary group-hover:border-primary transition-all duration-500 group-hover:shadow-[0_0_30px_rgba(var(--primary-rgb),0.5)]">
+                      <item.icon className="h-8 w-8 text-primary group-hover:text-white transition-colors" />
+                    </div>
+                    <span className="text-4xl font-black text-foreground/10 group-hover:text-primary/20 transition-colors uppercase tracking-tighter">
+                      {item.step}
+                    </span>
+                  </div>
+                </div>
 
-                {/* Highlights */}
-                <ul className="mt-5 flex flex-wrap gap-2">
-                  {item.highlights.map((highlight) => (
-                    <li
-                      key={highlight}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary"
-                    >
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                      {highlight}
-                    </li>
-                  ))}
-                </ul>
+                {/* Content */}
+                <div className="space-y-6">
+                  <h3 className="text-2xl font-black tracking-tight text-foreground group-hover:text-primary transition-colors">
+                    {item.title}
+                  </h3>
+                  <p className="text-base font-medium leading-relaxed text-muted-foreground group-hover:text-foreground/80 transition-colors">
+                    {item.description}
+                  </p>
+
+                  <div className="flex flex-wrap gap-2 pt-4 border-t border-border/50">
+                    {item.highlights.map((h, idx) => (
+                      <div key={idx} className="flex items-center gap-2 pr-2">
+                        <div className="h-1 w-1 rounded-full bg-primary" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
+                          {h}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Bottom Accent */}
+                <div className="mt-8 flex justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                  <ChevronRight className="h-6 w-6 text-primary" />
+                </div>
               </div>
             </div>
           ))}

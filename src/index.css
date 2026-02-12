@@ -4,74 +4,48 @@
 
 @layer base {
   :root {
-    --background: oklch(0.985 0.002 250);
+    --background: oklch(0.99 0.005 250);
     --foreground: oklch(0.15 0.02 250);
     --card: oklch(1 0 0);
     --card-foreground: oklch(0.15 0.02 250);
     --popover: oklch(1 0 0);
     --popover-foreground: oklch(0.15 0.02 250);
-    --primary: oklch(0.55 0.22 240);
+    --primary: oklch(0.55 0.22 260);
     --primary-foreground: oklch(1 0 0);
     --secondary: oklch(0.97 0.01 250);
     --secondary-foreground: oklch(0.15 0.02 250);
     --muted: oklch(0.96 0.005 250);
     --muted-foreground: oklch(0.45 0.015 250);
-    --accent: oklch(0.75 0.12 195);
-    --accent-foreground: oklch(0.15 0.02 250);
-    --destructive: oklch(0.577 0.245 27.325);
+    --accent: oklch(0.6 0.2 280);
+    --accent-foreground: oklch(1 0 0);
+    --destructive: oklch(0.6 0.2 25);
     --destructive-foreground: oklch(1 0 0);
     --border: oklch(0.92 0.01 250);
     --input: oklch(0.97 0.005 250);
-    --ring: oklch(0.55 0.22 240);
-    --chart-1: oklch(0.55 0.22 240);
-    --chart-2: oklch(0.75 0.12 195);
-    --chart-3: oklch(0.65 0.18 220);
-    --chart-4: oklch(0.6 0.15 235);
-    --chart-5: oklch(0.8 0.1 185);
-    --radius: 1rem;
-    --sidebar: oklch(1 0 0);
-    --sidebar-foreground: oklch(0.15 0.02 250);
-    --sidebar-primary: oklch(0.55 0.22 240);
-    --sidebar-primary-foreground: oklch(1 0 0);
-    --sidebar-accent: oklch(0.96 0.01 250);
-    --sidebar-accent-foreground: oklch(0.15 0.02 250);
-    --sidebar-border: oklch(0.92 0.01 250);
-    --sidebar-ring: oklch(0.55 0.22 240);
+    --ring: oklch(0.55 0.22 260);
+    --radius: 1.25rem;
   }
 
   .dark {
-    --background: oklch(0.1 0.015 250);
-    --foreground: oklch(0.95 0.005 250);
-    --card: oklch(0.14 0.015 250);
-    --card-foreground: oklch(0.95 0.005 250);
-    --popover: oklch(0.14 0.015 250);
-    --popover-foreground: oklch(0.95 0.005 250);
-    --primary: oklch(0.65 0.2 235);
-    --primary-foreground: oklch(0.1 0.015 250);
-    --secondary: oklch(0.2 0.015 250);
-    --secondary-foreground: oklch(0.95 0.005 250);
-    --muted: oklch(0.18 0.015 250);
-    --muted-foreground: oklch(0.6 0.015 250);
-    --accent: oklch(0.75 0.12 195);
-    --accent-foreground: oklch(0.1 0.015 250);
-    --destructive: oklch(0.55 0.2 25);
-    --destructive-foreground: oklch(0.95 0.005 250);
-    --border: oklch(0.22 0.015 250);
-    --input: oklch(0.16 0.015 250);
-    --ring: oklch(0.65 0.2 235);
-    --chart-1: oklch(0.65 0.2 235);
-    --chart-2: oklch(0.75 0.12 195);
-    --chart-3: oklch(0.7 0.16 215);
-    --chart-4: oklch(0.6 0.14 230);
-    --chart-5: oklch(0.8 0.1 185);
-    --sidebar: oklch(0.08 0.015 250);
-    --sidebar-foreground: oklch(0.95 0.005 250);
-    --sidebar-primary: oklch(0.65 0.2 235);
-    --sidebar-primary-foreground: oklch(0.1 0.015 250);
-    --sidebar-accent: oklch(0.16 0.015 250);
-    --sidebar-accent-foreground: oklch(0.95 0.005 250);
-    --sidebar-border: oklch(0.22 0.015 250);
-    --sidebar-ring: oklch(0.65 0.2 235);
+    --background: oklch(0.12 0.02 250);
+    --foreground: oklch(0.98 0.005 250);
+    --card: oklch(0.16 0.02 250);
+    --card-foreground: oklch(0.98 0.005 250);
+    --popover: oklch(0.16 0.02 250);
+    --popover-foreground: oklch(0.98 0.005 250);
+    --primary: oklch(0.65 0.2 260);
+    --primary-foreground: oklch(0.12 0.02 250);
+    --secondary: oklch(0.22 0.02 250);
+    --secondary-foreground: oklch(0.98 0.005 250);
+    --muted: oklch(0.2 0.02 250);
+    --muted-foreground: oklch(0.7 0.01 250);
+    --accent: oklch(0.7 0.18 280);
+    --accent-foreground: oklch(0.12 0.02 250);
+    --destructive: oklch(0.6 0.2 25);
+    --destructive-foreground: oklch(0.98 0.005 250);
+    --border: oklch(0.25 0.02 250);
+    --input: oklch(0.22 0.02 250);
+    --ring: oklch(0.65 0.2 260);
   }
 }
 
@@ -81,6 +55,106 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-white/70 backdrop-blur-xl border border-white/20 shadow-[0_8px_32px_0_rgba(31, 38, 135, 0.07)];
+  }
+
+  .dark .glass {
+    @apply bg-black/40 backdrop-blur-xl border border-white/10 shadow-none;
+  }
+
+  .glass-card {
+    @apply bg-card/60 backdrop-blur-lg border border-border/50 shadow-xl shadow-black/5;
+  }
+
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary via-accent to-primary;
+  }
+
+  .bg-mesh {
+    background-image:
+      radial-gradient(at 0% 0%, hsla(253, 16%, 7%, 1) 0, transparent 50%),
+      radial-gradient(at 50% 0%, hsla(225, 39%, 30%, 1) 0, transparent 50%),
+      radial-gradient(at 100% 0%, hsla(339, 49%, 30%, 1) 0, transparent 50%);
+  }
+}
+
+/* Custom animations */
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+@keyframes gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient 6s ease infinite;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--muted-foreground), transparent 80%);
+  border-radius: 9999px;
+  transition: background-color 0.3s;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in srgb, var(--muted-foreground), transparent 60%);
+}
+
+/* AI Prose Custom Styles */
+.prose-custom :where(p):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
+  margin-top: 1em;
+  margin-bottom: 1em;
+}
+
+.prose-custom :where(ul):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
+  margin-top: 1em;
+  margin-bottom: 1em;
+  padding-left: 1.5em;
+  list-style-type: disc;
+}
+
+.prose-custom :where(h1, h2, h3):not(:where([class~="not-prose"], [class~="not-prose"] *)) {
+  @apply text-foreground font-black tracking-tight mt-6 mb-4;
 }
