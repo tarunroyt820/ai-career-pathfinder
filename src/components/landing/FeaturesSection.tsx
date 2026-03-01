@@ -54,11 +54,11 @@ export function FeaturesSection() {
         {/* Section Header */}
         <div className="flex flex-col lg:flex-row items-end justify-between gap-12 mb-32">
           <div className="max-w-2xl space-y-8">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[rgba(22,160,133,0.12)] text-[#16A085] text-xs font-black uppercase tracking-[0.2em] border border-[rgba(22,160,133,0.25)]">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[rgba(22,160,133,0.12)] text-[#16A085] text-[10px] font-black uppercase tracking-[0.2em] border border-[rgba(22,160,133,0.25)]">
               <Zap className="h-3 w-3" />
               Core Capabilities
             </div>
-            <h2 className="text-white text-4xl md:text-6xl font-black tracking-tight leading-[0.9]">
+            <h2 className="text-white text-5xl md:text-7xl font-black tracking-tight leading-[0.9]">
               Supercharge your <br />
               <span className="text-teal-gradient">Professional Engine.</span>
             </h2>
@@ -66,7 +66,7 @@ export function FeaturesSection() {
               Nextaro isn't a simple dashboard—it's a high-precision neural command center <br className="hidden md:block" /> for your entire global career trajectory.
             </p>
           </div>
-          <Button variant="outline" className="h-16 px-10 rounded-2xl font-black uppercase tracking-[0.2em] gap-3 group border-[rgba(22,160,133,0.25)] text-white hover:bg-[rgba(22,160,133,0.1)] text-sm">
+          <Button variant="outline" className="h-16 px-10 rounded-2xl font-black uppercase tracking-[0.2em] gap-3 group border-[rgba(22,160,133,0.25)] text-white hover:bg-[rgba(22,160,133,0.1)] text-xs">
             System Documentation
             <ChevronRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
           </Button>
@@ -89,14 +89,14 @@ export function FeaturesSection() {
                   </div>
 
                   <div className="space-y-4">
-                    <h3 className="text-xl font-bold tracking-tight text-white">{feature.title}</h3>
-                    <p className="text-base md:text-lg font-medium leading-relaxed text-[#BDD8E9] transition-colors duration-500">
+                    <h3 className="text-2xl font-black tracking-tight text-white">{feature.title}</h3>
+                    <p className="text-base font-medium leading-relaxed text-[#BDD8E9] transition-colors duration-500">
                       {feature.description}
                     </p>
                   </div>
 
                   <div className="flex items-center gap-4 pt-8 opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-4 group-hover:translate-y-0">
-                    <span className="text-xs font-black uppercase tracking-[0.2em] text-[#16A085]">LEARN MORE</span>
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#16A085]">LEARN MORE</span>
                     <div className="h-px flex-grow bg-[rgba(22,160,133,0.2)]" />
                     <ChevronRight className="h-4 w-4 text-[#16A085]" />
                   </div>

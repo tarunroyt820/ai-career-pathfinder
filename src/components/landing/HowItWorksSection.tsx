@@ -37,11 +37,11 @@ export function HowItWorksSection() {
       <div className="mx-auto max-w-7xl relative z-10">
         {/* Section Header */}
         <div className="flex flex-col items-center text-center space-y-6 mb-24">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[rgba(22,160,133,0.12)] text-[#16A085] text-xs font-black uppercase tracking-widest border border-[rgba(22,160,133,0.25)]">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[rgba(22,160,133,0.12)] text-[#16A085] text-[10px] font-black uppercase tracking-widest border border-[rgba(22,160,133,0.25)]">
             <Sparkles className="h-3 w-3" />
             Operational Protocol
           </div>
-          <h2 className="text-white text-4xl md:text-6xl font-black tracking-tight leading-[0.9]">
+          <h2 className="text-white text-5xl md:text-7xl font-black tracking-tight leading-[0.9]">
             Automate Your <br />
             <span className="text-teal-gradient">Evolution.</span>
           </h2>
@@ -73,10 +73,10 @@ export function HowItWorksSection() {
 
                 {/* Content */}
                 <div className="space-y-6">
-                  <h3 className="text-xl font-bold tracking-tight text-white transition-colors">
+                  <h3 className="text-2xl font-black tracking-tight text-white transition-colors">
                     {item.title}
                   </h3>
-                  <p className="text-base md:text-lg font-medium leading-relaxed text-[#BDD8E9] transition-colors">
+                  <p className="text-base font-medium leading-relaxed text-[#BDD8E9] transition-colors">
                     {item.description}
                   </p>
 
@@ -84,7 +84,7 @@ export function HowItWorksSection() {
                     {item.highlights.map((h, idx) => (
                       <div key={idx} className="flex items-center gap-2 pr-2">
                         <div className="h-1 w-1 rounded-full bg-[#16A085]" />
-                        <span className="text-xs font-black uppercase tracking-widest text-[#7BBDE8]/70">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-[#7BBDE8]/70">
                           {h}
                         </span>
                       </div>

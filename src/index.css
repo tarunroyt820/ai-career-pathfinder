@@ -3,92 +3,20 @@
 @tailwind utilities;
 
 @layer base {
-  /* ============================================================
-     LIGHT MODE — Clean, bright, readable
-  ============================================================ */
   :root {
-    /* Page backgrounds */
-    --background:           #F0F4FF;
-    --background-alt:       #E4ECFB;
-    --background-elevated:  #FFFFFF;
-
-    /* Text */
-    --foreground:           #0D1117;
-    --foreground-muted:     #3A4A6B;
-    --foreground-dim:       #6B7FA8;
-
-    /* Primary = Emerald Teal */
-    --primary:              #16A085;
-    --primary-hover:        #168777;
-    --primary-subtle:       #156F69;
-    --primary-dim:          #15565B;
-    --primary-foreground:   #FFFFFF;
-
-    /* Borders */
-    --border:               rgba(21, 86, 91, 0.18);
-    --border-highlight:     rgba(22, 160, 133, 0.4);
-
-    /* Cards */
-    --card:                 #FFFFFF;
-    --card-foreground:      #0D1117;
-
-    /* Radius */
-    --radius: 1rem;
-
-    /* Legacy tokens for component compatibility */
-    --popover:                  #FFFFFF;
-    --popover-foreground:       #0D1117;
-    --secondary:                #E4ECFB;
-    --secondary-foreground:     #0D1117;
-    --muted:                    #E4ECFB;
-    --muted-foreground:         #6B7FA8;
-    --accent:                   #16A085;
-    --accent-foreground:        #FFFFFF;
-    --destructive:              #dc2626;
-    --destructive-foreground:   #FFFFFF;
-    --input:                    #E4ECFB;
-    --ring:                     #16A085;
-
-    /* ── Neon/Landing tokens (LIGHT mode versions) ── */
-    --neon-base:        240 244 255;      /* #F0F4FF light bg */
-    --neon-cyan:        13 100 133;       /* deep teal-cyan for light */
-    --neon-violet:      90 38 180;        /* deep violet */
-    --neon-pink:        190 40 90;        /* deep pink */
-    --neon-mint:        22 160 133;       /* teal mint */
-    --neon-heading:     13 17 23;         /* #0D1117 near-black */
-    --neon-body:        58 74 107;        /* #3A4A6B dark slate */
-    --neon-card-bg:     255 255 255;      /* white cards */
-    --neon-border:      21 86 91;         /* teal border */
-
-    /* Aurora tokens */
-    --aurora-base:      240 244 255;
-    --aurora-indigo:    99 102 241;
-    --aurora-violet:    139 92 246;
-    --aurora-teal:      20 184 166;
-    --aurora-cyan:      14 165 233;
-    --aurora-magenta:   168 85 247;
-    --aurora-pink:      244 63 94;
-    --landing-text:     13 17 23;
-    --landing-muted:    58 74 107;
-  }
-
-  /* ============================================================
-     DARK MODE — Deep Abyss + Emerald Teal
-  ============================================================ */
-  .dark {
-    /* Page backgrounds */
+    /* Core semantic tokens — Deep Abyss + Emerald Teal */
     --background:           #140C30;
     --background-alt:       #14253E;
     --background-elevated:  #153D4C;
-
-    /* Text */
     --foreground:           #FFFFFF;
     --foreground-muted:     #BDD8E9;
     --foreground-dim:       #7BBDE8;
 
-    /* Primary = Emerald Teal */
+    /* Primary/Accent = Emerald Teal */
     --primary:              #16A085;
     --primary-hover:        #168777;
+    --primary-subtle:       #156F69;
+    --primary-dim:          #15565B;
     --primary-foreground:   #FFFFFF;
 
     /* Borders */
@@ -99,41 +27,37 @@
     --card:                 #14253E;
     --card-foreground:      #FFFFFF;
 
-    /* Legacy tokens */
-    --popover:                  #14253E;
-    --popover-foreground:       #FFFFFF;
-    --secondary:                #14253E;
-    --secondary-foreground:     #FFFFFF;
-    --muted:                    #15565B;
-    --muted-foreground:         #7BBDE8;
-    --accent:                   #16A085;
-    --accent-foreground:        #FFFFFF;
-    --destructive:              #dc2626;
-    --destructive-foreground:   #FFFFFF;
-    --input:                    #14253E;
-    --ring:                     #16A085;
+    /* Radius */
+    --radius: 1rem;
 
-    /* ── Neon/Landing tokens (DARK mode versions) ── */
-    --neon-base:        20 12 48;         /* #140C30 dark bg */
-    --neon-cyan:        0 229 255;        /* Electric cyan */
-    --neon-violet:      192 38 255;       /* Vivid violet */
-    --neon-pink:        255 61 129;       /* Hot pink */
-    --neon-mint:        124 255 178;      /* Mint green */
-    --neon-heading:     255 255 255;      /* Pure white */
-    --neon-body:        189 216 233;      /* #BDD8E9 ice blue */
-    --neon-card-bg:     20 37 62;         /* #14253E navy card */
-    --neon-border:      255 255 255;      /* White at low opacity */
+    /* Legacy tokens for backwards compatibility */
+    --popover: #14253E;
+    --popover-foreground: #FFFFFF;
+    --secondary: #14253E;
+    --secondary-foreground: #FFFFFF;
+    --muted: #15565B;
+    --muted-foreground: #7BBDE8;
+    --accent: #16A085;
+    --accent-foreground: #FFFFFF;
+    --destructive: #dc2626;
+    --destructive-foreground: #FFFFFF;
+    --input: #14253E;
+    --ring: #16A085;
+  }
 
-    /* Aurora tokens */
-    --aurora-base:      20 12 48;
-    --aurora-indigo:    99 102 241;
-    --aurora-violet:    139 92 246;
-    --aurora-teal:      20 184 166;
-    --aurora-cyan:      14 165 233;
-    --aurora-magenta:   168 85 247;
-    --aurora-pink:      244 63 94;
-    --landing-text:     255 255 255;
-    --landing-muted:    189 216 233;
+  .dark {
+    /* Dark mode is the default — same values */
+    --background:           #140C30;
+    --foreground:           #FFFFFF;
+    --foreground-muted:     #BDD8E9;
+    --foreground-dim:       #7BBDE8;
+    --primary:              #16A085;
+    --primary-hover:        #168777;
+    --card:                 #14253E;
+    --card-foreground:      #FFFFFF;
+    --border:               rgba(21, 86, 91, 0.25);
+    --border-highlight:     rgba(22, 160, 133, 0.35);
+    --muted-foreground:     #7BBDE8;
   }
 }
 
@@ -144,8 +68,6 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-size: 16px;
-    line-height: 1.6;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 }
@@ -171,25 +93,24 @@
 
   /* Card styles */
   .abyss-card {
-    background-color: var(--card);
-    color: var(--card-foreground);
-    border: 1px solid var(--border);
+    background-color: #14253E;
+    border: 1px solid rgba(21, 86, 91, 0.25);
     border-radius: 1.5rem;
     backdrop-filter: blur(16px);
     transition: border-color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
   }
   .abyss-card:hover {
-    border-color: var(--border-highlight);
+    border-color: rgba(22, 160, 133, 0.35);
     transform: translateY(-6px);
     box-shadow: 0 24px 60px rgba(22, 160, 133, 0.12);
   }
 
   /* Section backgrounds */
   .section-primary {
-    background-color: var(--background);
+    background-color: #140C30;
   }
   .section-alt {
-    background-color: var(--background-alt);
+    background-color: #14253E;
   }
 
   /* Divider */

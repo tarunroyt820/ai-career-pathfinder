@@ -37,7 +37,7 @@ export function TestimonialsSection() {
       <div className="mx-auto max-w-7xl relative">
         {/* Section Header */}
         <div className="flex flex-col items-center text-center space-y-6 mb-24">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[rgba(22,160,133,0.12)] text-[#16A085] text-xs font-black uppercase tracking-widest border border-[rgba(22,160,133,0.25)]">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[rgba(22,160,133,0.12)] text-[#16A085] text-[10px] font-black uppercase tracking-widest border border-[rgba(22,160,133,0.25)]">
             <Sparkles className="h-3 w-3" />
             Social Pulse
           </div>
@@ -73,7 +73,7 @@ export function TestimonialsSection() {
                 </div>
 
                 {/* Content */}
-                <p className="text-base md:text-lg font-bold leading-relaxed text-white italic">
+                <p className="text-lg font-bold leading-relaxed text-white italic">
                   "{item.content}"
                 </p>
 
@@ -92,11 +92,11 @@ export function TestimonialsSection() {
                     )}
                   </div>
                   <div>
-                    <p className="text-base font-bold text-white tracking-tight">{item.name}</p>
+                    <p className="font-black text-white tracking-tight">{item.name}</p>
                     <p className="text-xs font-bold text-[#7BBDE8] uppercase tracking-widest">
                       {item.role}
                     </p>
-                    <p className="text-xs font-black text-[#16A085] uppercase tracking-tighter pt-1">
+                    <p className="text-[10px] font-black text-[#16A085] uppercase tracking-tighter pt-1">
                       {item.company}
                     </p>
                   </div>

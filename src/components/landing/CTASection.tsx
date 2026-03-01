@@ -21,7 +21,7 @@ export function CTASection() {
                 <Sparkles className="h-5 w-5 animate-pulse" />
                 <span className="text-xs font-black uppercase tracking-widest">Immediate Deployment</span>
               </div>
-              <h2 className="text-white text-5xl md:text-7xl font-black tracking-tight leading-[0.9]">
+              <h2 className="text-white text-4xl md:text-7xl font-black tracking-tight leading-[0.9]">
                 Unlock your <br />
                 Future Today.
               </h2>

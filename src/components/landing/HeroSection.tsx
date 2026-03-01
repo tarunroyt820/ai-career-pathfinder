@@ -22,10 +22,10 @@ export function HeroSection() {
             </div>
 
             <div className="space-y-4">
-              <h1 className="text-white text-5xl sm:text-6xl xl:text-7xl/none font-extrabold tracking-tighter leading-[1.1]">
+              <h1 className="text-white text-4xl sm:text-6xl xl:text-7xl/none font-extrabold tracking-tighter leading-[1.1]">
                 Discover Your <span className="text-teal-gradient">Ideal</span> <br className="hidden xl:block" /> Career Path
               </h1>
-              <p className="text-[#BDD8E9] text-lg md:text-xl lg:text-2xl font-medium max-w-[600px]">
+              <p className="text-[#BDD8E9] md:text-xl font-medium max-w-[600px]">
                 Our AI-powered platform analyses your skills, courses, and
                 CV to recommend the best career paths for you.
               </p>
