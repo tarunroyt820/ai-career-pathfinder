@@ -3,6 +3,7 @@ import { ChevronRight, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Logo } from "@/components/common/Logo";
+import { ThemeToggle } from "./ThemeToggle";
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -47,6 +48,7 @@ export function Navbar() {
 
         {/* Desktop CTAs - Premium Styling */}
         <div className="hidden items-center gap-6 md:flex">
+          <ThemeToggle />
           <Button
             variant="ghost"
             onClick={() => navigate("/login")}

@@ -47,6 +47,13 @@ export default {
                 border: "var(--border)",
                 input: "var(--input)",
                 ring: "var(--ring)",
+                "vibrant-blue": "#2563eb",
+                "vibrant-purple": "#7e22ce",
+                "vibrant-pink": "#db2777",
+                "vibrant-teal": "#0d9488",
+                "vibrant-dark-blue": "#60a5fa",
+                "vibrant-dark-purple": "#a855f7",
+                "vibrant-dark-pink": "#f472b6",
                 chart: {
                     1: "var(--chart-1)",
                     2: "var(--chart-2)",
