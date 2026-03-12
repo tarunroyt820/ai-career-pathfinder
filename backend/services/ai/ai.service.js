@@ -1,9 +1,11 @@
 const groqService = require("./groq.service");
 const geminiService = require("./gemini.service");
 const openaiService = require("./openai.service");
+const deepseekService = require("./deepseek.service");
 
-// Priority order: Groq -> Gemini -> OpenAI
+// Priority order: DeepSeek -> Groq -> Gemini -> OpenAI
 const providers = [
+    { name: "deepseek", service: deepseekService },
     { name: "groq", service: groqService },
     { name: "gemini", service: geminiService },
     { name: "openai", service: openaiService }
