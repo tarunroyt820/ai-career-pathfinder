@@ -1,4 +1,0 @@
-Delete the following file to fully remove OpenAI API support:
-- backend/services/ai/openai.service.js
-
-This file is not auto-deleted for safety. You can remove it manually if you are sure you do not need OpenAI support anymore.
