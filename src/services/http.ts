@@ -31,6 +31,21 @@ const refreshAccessToken = async (): Promise<string> => {
     return refreshPromise;
 };
 
+axios.interceptors.request.use((config) => {
+    const requestUrl = String(config.url || "");
+    const isAuthRoute = requestUrl.includes("/api/auth/");
+
+    if (!isAuthRoute) {
+        const token = localStorage.getItem("nextro_token");
+        if (token) {
+            config.headers = config.headers || {};
+            config.headers.Authorization = `Bearer ${token}`;
+        }
+    }
+
+    return config;
+});
+
 axios.interceptors.response.use(
     (response) => response,
     async (error) => {

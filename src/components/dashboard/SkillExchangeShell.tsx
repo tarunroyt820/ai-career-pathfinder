@@ -55,6 +55,8 @@ export function SkillExchangeShell() {
   const [state, setState] = useState<OverviewState>(fallbackState);
   const [loading, setLoading] = useState(true);
 
+  const normalizeList = <T,>(value: T[] | undefined | null): T[] => (Array.isArray(value) ? value : []);
+
   useEffect(() => {
     const load = async () => {
       setLoading(true);
@@ -80,11 +82,11 @@ export function SkillExchangeShell() {
 
       setState({
         profile: profileResult.status === "fulfilled" ? profileResult.value : null,
-        matchesCount: matchesResult.status === "fulfilled" ? matchesResult.value.total || matchesResult.value.matches.length : 0,
-        agreements: agreementsResult.status === "fulfilled" ? agreementsResult.value : [],
-        sentRequests: sentRequestsResult.status === "fulfilled" ? sentRequestsResult.value : [],
-        receivedRequests: receivedRequestsResult.status === "fulfilled" ? receivedRequestsResult.value : [],
-        notifications: notificationsResult.status === "fulfilled" ? notificationsResult.value : [],
+        matchesCount: matchesResult.status === "fulfilled" ? matchesResult.value.total || normalizeList(matchesResult.value.matches).length : 0,
+        agreements: agreementsResult.status === "fulfilled" ? normalizeList(agreementsResult.value) : [],
+        sentRequests: sentRequestsResult.status === "fulfilled" ? normalizeList(sentRequestsResult.value) : [],
+        receivedRequests: receivedRequestsResult.status === "fulfilled" ? normalizeList(receivedRequestsResult.value) : [],
+        notifications: notificationsResult.status === "fulfilled" ? normalizeList(notificationsResult.value) : [],
       });
 
       setLoading(false);
@@ -93,9 +95,9 @@ export function SkillExchangeShell() {
     load();
   }, []);
 
-  const unreadNotifications = state.notifications.filter((item) => !item.read);
-  const activeAgreements = state.agreements.filter((item) => item.status === "active");
-  const pendingReceived = state.receivedRequests.filter((item) => item.status === "pending");
+  const unreadNotifications = Array.isArray(state.notifications) ? state.notifications.filter((item) => !item.read) : [];
+  const activeAgreements = Array.isArray(state.agreements) ? state.agreements.filter((item) => item.status === "active") : [];
+  const pendingReceived = Array.isArray(state.receivedRequests) ? state.receivedRequests.filter((item) => item.status === "pending") : [];
   const setupComplete = Boolean(state.profile?.skillsOffered.length && state.profile?.skillsWanted.length);
 
   const recommendedActions = useMemo(

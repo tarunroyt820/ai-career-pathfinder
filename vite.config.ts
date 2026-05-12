@@ -10,4 +10,47 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("node_modules")) {
+            if (id.includes("react-dom") || id.includes("react/") || id.includes("react-jsx-runtime")) {
+              return "vendor-react";
+            }
+
+            if (id.includes("react-router-dom")) {
+              return "vendor-router";
+            }
+
+            if (id.includes("framer-motion")) {
+              return "vendor-motion";
+            }
+
+            if (id.includes("@tanstack/react-query")) {
+              return "vendor-query";
+            }
+
+            if (id.includes("recharts")) {
+              return "vendor-charts";
+            }
+
+            if (id.includes("react-markdown")) {
+              return "vendor-markdown";
+            }
+
+            if (id.includes("lucide-react")) {
+              return "vendor-icons";
+            }
+
+            if (id.includes("sonner")) {
+              return "vendor-toast";
+            }
+
+            return "vendor";
+          }
+        },
+      },
+    },
+  },
 })

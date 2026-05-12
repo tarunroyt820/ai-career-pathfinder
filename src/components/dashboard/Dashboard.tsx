@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { Navigate, NavLink, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import {
   BookOpen,
@@ -12,6 +12,7 @@ import {
   RefreshCw,
   Search,
   Settings,
+  Shield,
   TrendingUp,
   X,
 } from "lucide-react";
@@ -20,18 +21,19 @@ import { Button } from "@/components/common/Button";
 import { Logo } from "@/components/common/Logo";
 import { NotificationBell } from "@/components/notifications";
 import { cn } from "@/lib/utils";
+import { fetchAdminAccess } from "@/services/adminAccessApi";
 import { logout } from "@/services/authApi";
 import { getProfile } from "@/services/profileApi";
 import { UserProfile } from "@/types/profile";
 
-import { AIAssistantShell } from "./AIAssistantShell";
-import { CareerPathShell } from "./CareerPathShell";
-import { LearningShell } from "./LearningShell";
-import { OverviewShell } from "./OverviewShell";
-import { ResumeUpload } from "./ResumeUpload";
-import { SettingsShell } from "./SettingsShell";
-import { SkillExchangeShell } from "./SkillExchangeShell";
-import { SkillGapShell } from "./SkillGapShell";
+const AIAssistantShell = lazy(() => import("./AIAssistantShell").then((module) => ({ default: module.AIAssistantShell })));
+const CareerPathShell = lazy(() => import("./CareerPathShell").then((module) => ({ default: module.CareerPathShell })));
+const LearningShell = lazy(() => import("./LearningShell").then((module) => ({ default: module.LearningShell })));
+const OverviewShell = lazy(() => import("./OverviewShell").then((module) => ({ default: module.OverviewShell })));
+const ResumeUpload = lazy(() => import("./ResumeUpload").then((module) => ({ default: module.ResumeUpload })));
+const SettingsShell = lazy(() => import("./SettingsShell").then((module) => ({ default: module.SettingsShell })));
+const SkillExchangeShell = lazy(() => import("./SkillExchangeShell").then((module) => ({ default: module.SkillExchangeShell })));
+const SkillGapShell = lazy(() => import("./SkillGapShell").then((module) => ({ default: module.SkillGapShell })));
 
 const primaryNavItems = [
   { icon: LayoutGrid, label: "Overview", id: "overview", path: "/dashboard/overview" },
@@ -47,25 +49,36 @@ const secondaryNavItems = [
   { icon: Settings, label: "Settings", id: "settings", path: "/dashboard/settings" },
 ];
 
-const allNavItems = [...primaryNavItems, ...secondaryNavItems];
-
 export function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [desktopSidebarExpanded, setDesktopSidebarExpanded] = useState(true);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [profile, setProfile] = useState<UserProfile>({
+    fullName: "Nextaro Explorer",
+    email: "",
+    education: { college: "", degree: "", graduationYear: "" },
+    skills: [],
+    careerGoal: "",
+  });
   const [searchValue, setSearchValue] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const data = await getProfile();
-        setProfile(data);
+        const [data, adminResponse] = await Promise.allSettled([
+          getProfile(),
+          fetchAdminAccess(),
+        ]);
+
+        if (data.status === "fulfilled") {
+          setProfile(data.value);
+        }
+
+        setIsAdmin(adminResponse.status === "fulfilled");
       } catch (error) {
         console.error("Dashboard: Error fetching profile", error);
-        logout();
-        navigate("/login");
       }
     };
 
@@ -92,6 +105,12 @@ export function Dashboard() {
           .slice(0, 2)
       : "JD";
 
+  const adminNavItems = isAdmin
+    ? [{ icon: Shield, label: "Admin", id: "admin", path: "/admin" }]
+    : [];
+
+  const allNavItems = [...primaryNavItems, ...secondaryNavItems, ...adminNavItems];
+
   const activeItem = useMemo(
     () =>
       allNavItems.find((item) => location.pathname.startsWith(item.path)) ||
@@ -99,23 +118,6 @@ export function Dashboard() {
     [location.pathname],
   );
   const isAssistantRoute = location.pathname.startsWith("/dashboard/assistant");
-
-  if (!profile) {
-    return (
-      <div
-        className="flex h-screen w-full items-center justify-center"
-        style={{ background: "var(--bg-primary)", color: "var(--text-primary)" }}
-      >
-        <div
-          className="h-8 w-8 animate-spin rounded-full border-4 border-t-transparent"
-          style={{
-            borderColor: "var(--color-teal)",
-            borderTopColor: "transparent",
-          }}
-        />
-      </div>
-    );
-  }
 
   const renderNavSection = (
     title: string,
@@ -210,6 +212,12 @@ export function Dashboard() {
             {renderNavSection("Main Menu", primaryNavItems, false, desktopSidebarExpanded)}
             <div className="mx-[6px] my-3 h-px bg-[rgba(22,160,133,0.08)]" />
             {renderNavSection("Others", secondaryNavItems, false, desktopSidebarExpanded)}
+            {isAdmin && (
+              <>
+                <div className="mx-[6px] my-3 h-px bg-[rgba(22,160,133,0.08)]" />
+                {renderNavSection("Admin", adminNavItems, false, desktopSidebarExpanded)}
+              </>
+            )}
           </div>
 
           <div className="border-t border-[rgba(22,160,133,0.1)] p-3">
@@ -277,6 +285,7 @@ export function Dashboard() {
         <div className="space-y-5 p-6">
           {renderNavSection("Main Menu", primaryNavItems, true, true)}
           {renderNavSection("Others", secondaryNavItems, true, true)}
+          {isAdmin && renderNavSection("Admin", adminNavItems, true, true)}
           <Button
             variant="ghost"
             onClick={handleLogout}
@@ -338,24 +347,32 @@ export function Dashboard() {
               isAssistantRoute ? "flex h-full min-h-0 flex-col overflow-hidden" : "",
             )}
           >
-            <Routes>
-              <Route path="overview" element={<OverviewShell />} />
-              <Route path="career" element={<CareerPathShell />} />
-              <Route path="skillgap" element={<SkillGapShell />} />
-              <Route path="learning" element={<LearningShell />} />
-              <Route path="skills" element={<SkillExchangeShell />} />
-              <Route
-                path="assistant"
-                element={
-                  <div className="flex h-full min-h-0 flex-col overflow-hidden">
-                    <AIAssistantShell />
-                  </div>
-                }
-              />
-              <Route path="resume" element={<ResumeUpload />} />
-              <Route path="settings" element={<SettingsShell />} />
-              <Route path="/" element={<Navigate to="overview" replace />} />
-            </Routes>
+            <Suspense
+              fallback={
+                <div className="flex min-h-[320px] items-center justify-center text-sm text-[rgba(255,255,255,0.5)]">
+                  Loading dashboard...
+                </div>
+              }
+            >
+              <Routes>
+                <Route path="overview" element={<OverviewShell />} />
+                <Route path="career" element={<CareerPathShell />} />
+                <Route path="skillgap" element={<SkillGapShell />} />
+                <Route path="learning" element={<LearningShell />} />
+                <Route path="skills" element={<SkillExchangeShell />} />
+                <Route
+                  path="assistant"
+                  element={
+                    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+                      <AIAssistantShell />
+                    </div>
+                  }
+                />
+                <Route path="resume" element={<ResumeUpload />} />
+                <Route path="settings" element={<SettingsShell />} />
+                <Route path="/" element={<Navigate to="overview" replace />} />
+              </Routes>
+            </Suspense>
           </div>
         </main>
       </div>

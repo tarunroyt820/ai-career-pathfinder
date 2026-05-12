@@ -1,6 +1,7 @@
 ﻿const User = require('../models/User');
 const Message = require('../models/Message');
 const CareerPlan = require('../models/CareerPlan');
+const AIRequestLog = require('../models/AIRequestLog');
 const aiService = require('../services/ai/ai.service');
 const profileCache = require('../utils/profileCache');
 const { getProvider } = require('../utils/providerRouter');
@@ -67,6 +68,40 @@ const buildLocalFallbackAnswer = (question, profile, plan) => {
 
 const isFallbackEnabled = () => String(process.env.AI_ENABLE_FALLBACK || 'false').toLowerCase() === 'true';
 
+const saveAiLog = async ({
+    userId,
+    endpoint,
+    provider,
+    model,
+    intent,
+    promptLength,
+    responseLength,
+    status,
+    httpStatus,
+    errorCode,
+    errorMessage,
+    latencyMs
+}) => {
+    try {
+        await AIRequestLog.create({
+            userId,
+            endpoint,
+            provider,
+            model,
+            intent,
+            promptLength,
+            responseLength,
+            status,
+            httpStatus,
+            errorCode: errorCode || '',
+            errorMessage: errorMessage || '',
+            latencyMs: latencyMs || 0
+        });
+    } catch (error) {
+        console.error('saveAiLog failed:', error.message);
+    }
+};
+
 const MAX_HISTORY_TURNS = 6;
 const MAX_HISTORY_CHARS_PER_MESSAGE = 500;
 
@@ -84,7 +119,8 @@ const buildTrimmedHistory = (fullHistory) => {
 
             return {
                 role: message.role,
-                content: normalized.slice(0, MAX_HISTORY_CHARS_PER_MESSAGE)
+                content: normalized.slice(0, MAX_HISTORY_CHARS_PER_MESSAGE),
+                reasoningDetails: message.reasoningDetails || null
             };
         });
 
@@ -103,8 +139,12 @@ const buildTrimmedHistory = (fullHistory) => {
 exports.askAI = async (req, res) => {
     try {
         const question = req.body.question || req.body.message;
+        const imageUrls = Array.isArray(req.body.imageUrls)
+            ? req.body.imageUrls.map((url) => String(url || "").trim()).filter(Boolean)
+            : [];
         const userId = req.user.id;
         const preferredProvider = (req.body.provider || '').toLowerCase();
+        const aiStartedAt = Date.now();
 
         if (!question) {
             return res.status(400).json({ message: "Question is required" });
@@ -148,7 +188,8 @@ exports.askAI = async (req, res) => {
         const trimmedHistory = buildTrimmedHistory(
             chatHistory.map((message) => ({
                 role: message.role,
-                content: message.content
+                content: message.content,
+                reasoningDetails: message.reasoningDetails || null
             }))
         );
         console.log(`[HISTORY] sending ${trimmedHistory.length} turns to model`);
@@ -190,17 +231,50 @@ exports.askAI = async (req, res) => {
 
         try {
             const { provider, model: routedModel, intent } = getProvider(question, preferredProvider);
-            console.log(`[ROUTER] intent: ${intent} -> provider: ${provider} -> model: ${routedModel}`);
+            const effectiveProvider = imageUrls.length > 0 ? 'huggingface' : provider;
+            const effectiveModel = imageUrls.length > 0
+                ? (process.env.HF_VISION_MODEL || process.env.HF_SKILLGAP_MODEL || routedModel)
+                : routedModel;
+            console.log(`[ROUTER] intent: ${intent} -> provider: ${effectiveProvider} -> model: ${effectiveModel}`);
             const endAiCall = timer('ai_provider_call');
             let result;
             try {
                 const maxTokens = (
-                    provider === "huggingface" || provider === "hf"
+                    effectiveProvider === "huggingface" || effectiveProvider === "hf"
                 ) && intent === "skillgap"
                     ? Number(process.env.HF_SKILLGAP_MAX_NEW_TOKENS || process.env.HF_MAX_NEW_TOKENS || 512)
                     : undefined;
 
-                result = await aiService.generate(prompt, { provider, model: routedModel, maxTokens });
+                const structuredMessages = imageUrls.length > 0 && (effectiveProvider === "huggingface" || effectiveProvider === "hf")
+                    ? [
+                        {
+                            role: "user",
+                            content: [
+                                { type: "text", text: prompt },
+                                ...imageUrls.map((url) => ({ type: "image_url", image_url: { url } }))
+                            ]
+                        }
+                    ]
+                    : provider === "openrouter"
+                    ? [
+                        { role: "system", content: systemPrompt },
+                        ...trimmedHistory.map((msg) => {
+                            const base = {
+                                role: msg.role,
+                                content: msg.content
+                            };
+
+                            if (msg.role === "assistant" && msg.reasoningDetails) {
+                                base.reasoning_details = msg.reasoningDetails;
+                            }
+
+                            return base;
+                        }),
+                        { role: "user", content: question }
+                    ]
+                    : undefined;
+
+                result = await aiService.generate(prompt, { provider: effectiveProvider, model: effectiveModel, maxTokens, messages: structuredMessages });
             } catch (primaryError) {
                 // Retry once with a compact prompt to avoid token/latency spikes on long chat histories.
                 const compactRetryPrompt = [
@@ -210,12 +284,41 @@ exports.askAI = async (req, res) => {
                     `QUESTION: ${question}`
                 ].join('\n');
                 const maxTokens = (
-                    provider === "huggingface" || provider === "hf"
+                    effectiveProvider === "huggingface" || effectiveProvider === "hf"
                 ) && intent === "skillgap"
                     ? Number(process.env.HF_SKILLGAP_MAX_NEW_TOKENS || process.env.HF_MAX_NEW_TOKENS || 512)
                     : undefined;
 
-                result = await aiService.generate(compactRetryPrompt, { provider, model: routedModel, maxTokens });
+                const structuredRetryMessages = imageUrls.length > 0 && (effectiveProvider === "huggingface" || effectiveProvider === "hf")
+                    ? [
+                        {
+                            role: "user",
+                            content: [
+                                { type: "text", text: compactRetryPrompt },
+                                ...imageUrls.map((url) => ({ type: "image_url", image_url: { url } }))
+                            ]
+                        }
+                    ]
+                    : provider === "openrouter"
+                    ? [
+                        { role: "system", content: "You are a concise career guidance AI." },
+                        ...trimmedHistory.map((msg) => {
+                            const base = {
+                                role: msg.role,
+                                content: msg.content
+                            };
+
+                            if (msg.role === "assistant" && msg.reasoningDetails) {
+                                base.reasoning_details = msg.reasoningDetails;
+                            }
+
+                            return base;
+                        }),
+                        { role: "user", content: question }
+                    ]
+                    : undefined;
+
+                result = await aiService.generate(compactRetryPrompt, { provider: effectiveProvider, model: effectiveModel, maxTokens, messages: structuredRetryMessages });
             }
             endAiCall();
             const answer = result && result.text ? result.text : String(result);
@@ -239,9 +342,23 @@ exports.askAI = async (req, res) => {
             await Message.create({
                 userId,
                 role: 'assistant',
-                content: answer
+                content: answer,
+                reasoningDetails: result.reasoningDetails || null
             });
             endResponseSave();
+
+            await saveAiLog({
+                userId,
+                endpoint: '/api/ai/ask',
+                provider: result.providerUsed || effectiveProvider,
+                model: result.modelUsed || effectiveModel || '',
+                intent,
+                promptLength: prompt.length,
+                responseLength: String(answer || '').length,
+                status: 'success',
+                httpStatus: 200,
+                latencyMs: Date.now() - aiStartedAt
+            });
 
             res.json({
                 answer,
@@ -274,6 +391,20 @@ exports.askAI = async (req, res) => {
                 error.code === 'AI_NOT_CONFIGURED' ||
                 error.code === 'AI_PROVIDER_UNAVAILABLE'
             ) ? 503 : 500;
+            await saveAiLog({
+                userId,
+                endpoint: '/api/ai/ask',
+                provider: preferredProvider || (imageUrls.length > 0 ? 'huggingface' : process.env.AI_PROVIDER || 'groq'),
+                model: '',
+                intent: 'chat',
+                promptLength: String(question || '').length,
+                responseLength: 0,
+                status: 'failed',
+                httpStatus: statusCode,
+                errorCode: error.code || 'AI_FAILED',
+                errorMessage: error.message || 'AI service temporarily unavailable',
+                latencyMs: Date.now() - aiStartedAt
+            });
             res.status(statusCode).json({
                 success: false,
                 code: error.code || "AI_FAILED",
@@ -291,17 +422,35 @@ exports.askAI = async (req, res) => {
 
 exports.streamChat = async (req, res) => {
     const message = req.body.message || req.query.message;
+    const imageUrls = Array.isArray(req.body.imageUrls)
+        ? req.body.imageUrls.map((url) => String(url || "").trim()).filter(Boolean)
+        : [];
     const preferredProvider = (req.body.provider || req.query.provider || '').toLowerCase();
     const { provider, model: routedModel, intent } = getProvider(message || "", preferredProvider);
+    const effectiveProvider = imageUrls.length > 0 ? 'huggingface' : provider;
+    const effectiveModel = imageUrls.length > 0
+        ? (process.env.HF_VISION_MODEL || process.env.HF_SKILLGAP_MODEL || routedModel)
+        : routedModel;
 
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
 
     try {
-        console.log(`[ROUTER] intent: ${intent} -> provider: ${provider} -> model: ${routedModel}`);
+        console.log(`[ROUTER] intent: ${intent} -> provider: ${effectiveProvider} -> model: ${effectiveModel}`);
         const endAiCall = timer('ai_provider_stream_call');
-        const stream = await aiService.generateStream(message, { provider, model: routedModel });
+        const structuredMessages = imageUrls.length > 0 && (effectiveProvider === 'huggingface' || effectiveProvider === 'hf')
+            ? [
+                {
+                    role: 'user',
+                    content: [
+                        { type: 'text', text: message },
+                        ...imageUrls.map((url) => ({ type: 'image_url', image_url: { url } }))
+                    ]
+                }
+            ]
+            : undefined;
+        const stream = await aiService.generateStream(message, { provider: effectiveProvider, model: effectiveModel, messages: structuredMessages });
         endAiCall();
 
         stream.on('data', (chunk) => {
@@ -330,6 +479,7 @@ exports.streamChat = async (req, res) => {
 
 exports.generateCareerPlan = async (req, res) => {
     try {
+        const aiStartedAt = Date.now();
         let userProfile = profileCache.get(req.user.id);
         if (!userProfile) {
             const endProfileFetch = timer('profile_fetch_db');
@@ -363,12 +513,14 @@ exports.generateCareerPlan = async (req, res) => {
             }
         `;
 
-        const roadmapModel = process.env.GROQ_ROADMAP_MODEL || process.env.GROQ_HEAVY_MODEL || process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
-        console.log(`[ROUTER] intent: roadmap -> provider: groq -> model: ${roadmapModel}`);
+        const preferredProvider = (process.env.CAREER_PATH_PROVIDER || '').toLowerCase();
+        const { provider, model: roadmapModel } = getProvider('career path roadmap generation', preferredProvider);
+        console.log(`[ROUTER] intent: roadmap -> provider: ${provider} -> model: ${roadmapModel}`);
         const endAiCall = timer('career_plan_ai_call');
         const result = await aiService.generate(prompt, {
-            provider: 'groq',
-            model: roadmapModel
+            provider,
+            model: roadmapModel,
+            maxTokens: Number(process.env.CAREER_PATH_MAX_TOKENS || process.env.GROQ_MAX_COMPLETION_TOKENS || 2048)
         });
         endAiCall();
         const aiResponse = result && result.text ? result.text : String(result);
@@ -394,6 +546,19 @@ exports.generateCareerPlan = async (req, res) => {
         );
         endPlanSave();
 
+        await saveAiLog({
+            userId: req.user.id,
+            endpoint: '/api/ai/generate-career-plan',
+            provider: result.providerUsed || provider,
+            model: result.modelUsed || roadmapModel || '',
+            intent: 'roadmap',
+            promptLength: prompt.length,
+            responseLength: String(aiResponse || '').length,
+            status: 'success',
+            httpStatus: 200,
+            latencyMs: Date.now() - aiStartedAt
+        });
+
         res.json({
             success: true,
             answer: aiResponse,
@@ -405,6 +570,20 @@ exports.generateCareerPlan = async (req, res) => {
             error.code === 'AI_NOT_CONFIGURED' ||
             error.code === 'AI_PROVIDER_UNAVAILABLE'
         ) ? 503 : 500;
+        await saveAiLog({
+            userId: req.user?.id || null,
+            endpoint: '/api/ai/generate-career-plan',
+            provider: process.env.CAREER_PATH_PROVIDER || process.env.AI_PROVIDER || 'groq',
+            model: '',
+            intent: 'roadmap',
+            promptLength: 0,
+            responseLength: 0,
+            status: 'failed',
+            httpStatus: statusCode,
+            errorCode: error.code || 'AI_FAILED',
+            errorMessage: error.message || 'AI service temporarily unavailable',
+            latencyMs: 0
+        });
         res.status(statusCode).json({
             success: false,
             code: error.code || "AI_FAILED",

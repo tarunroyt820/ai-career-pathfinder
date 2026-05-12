@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRightLeft, CheckCircle2, RefreshCw, Send, X } from "lucide-react";
+import { ArrowRightLeft, CheckCircle2, MessageCircle, RefreshCw, Send, X } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -7,9 +7,13 @@ import {
   counterTradeRequest,
   declineTradeRequest,
   getTradeRequests,
+  getTradeRequestMessages,
+  sendTradeRequestMessage,
+  TradeRequestMessage,
   TradeRequest,
 } from "@/services/skillExchangeApi";
 import { cn } from "@/lib/utils";
+import { getCurrentUserIdFromToken } from "@/utils/authToken";
 import { formatRelativeDate, getRequestStatusTone, inputClass, panelClass, sectionClass } from "./shared";
 
 const getUserName = (value: string | { _id: string; fullName?: string }, fallback = "User"): string =>
@@ -23,12 +27,18 @@ type CounterDraft = {
 };
 
 export function SkillRequestsPage() {
+  const currentUserId = getCurrentUserIdFromToken();
   const [tab, setTab] = useState<"received" | "sent">("received");
   const [requests, setRequests] = useState<TradeRequest[]>([]);
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
   const [counterDraft, setCounterDraft] = useState<CounterDraft | null>(null);
   const [saving, setSaving] = useState(false);
+  const [activeConversation, setActiveConversation] = useState<TradeRequest | null>(null);
+  const [conversationMessages, setConversationMessages] = useState<TradeRequestMessage[]>([]);
+  const [conversationDraft, setConversationDraft] = useState("");
+  const [conversationLoading, setConversationLoading] = useState(false);
+  const [conversationSending, setConversationSending] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -45,6 +55,22 @@ export function SkillRequestsPage() {
   useEffect(() => {
     load();
   }, [tab]);
+
+  const openConversation = async (request: TradeRequest) => {
+    setActiveConversation(request);
+    setConversationDraft("");
+    setConversationLoading(true);
+
+    try {
+      const data = await getTradeRequestMessages(request._id);
+      setConversationMessages(data);
+    } catch (error) {
+      toast.error((error as Error).message);
+      setConversationMessages([]);
+    } finally {
+      setConversationLoading(false);
+    }
+  };
 
   const onAccept = async (id: string) => {
     try {
@@ -83,6 +109,23 @@ export function SkillRequestsPage() {
       toast.error((error as Error).message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const sendConversationMessage = async () => {
+    if (!activeConversation || !conversationDraft.trim() || conversationSending) return;
+
+    setConversationSending(true);
+    try {
+      await sendTradeRequestMessage(activeConversation._id, conversationDraft.trim());
+      setConversationDraft("");
+      const updatedMessages = await getTradeRequestMessages(activeConversation._id);
+      setConversationMessages(updatedMessages);
+      await load();
+    } catch (error) {
+      toast.error((error as Error).message);
+    } finally {
+      setConversationSending(false);
     }
   };
 
@@ -221,12 +264,29 @@ export function SkillRequestsPage() {
                         )}
                       </div>
                     )}
+
+                    {request.status === "accepted" && (
+                      <div className="rounded-3xl border border-[rgba(22,160,133,0.2)] bg-[rgba(22,160,133,0.08)] p-4">
+                        <div className="text-[11px] font-black uppercase tracking-[0.2em] text-[#7fe7d2]">Exchange active</div>
+                        <p className="mt-2 text-sm text-[rgba(189,216,233,0.8)]">
+                          The learning request was accepted. Continue deeper teaching conversations in the exchange inbox too.
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex flex-col items-start gap-3 xl:items-end">
                     <div className={`rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-[0.18em] ${getRequestStatusTone(request.status)}`}>
                       {request.status}
                     </div>
+
+                    <button
+                      onClick={() => openConversation(request)}
+                      className="inline-flex items-center gap-2 rounded-2xl border border-[rgba(96,165,250,0.24)] px-4 py-3 text-xs font-black uppercase tracking-[0.18em] text-sky-200 transition hover:bg-[rgba(96,165,250,0.08)]"
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                      Conversation
+                    </button>
 
                     {tab === "received" && request.status === "pending" && (
                       <div className="flex flex-wrap gap-3">
@@ -337,6 +397,125 @@ export function SkillRequestsPage() {
                 className="rounded-2xl bg-amber-500 px-5 py-3 text-sm font-black uppercase tracking-[0.18em] text-[#241400] transition hover:opacity-95 disabled:opacity-60"
               >
                 {saving ? "Sending..." : "Send Counter"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeConversation && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(1,4,18,0.82)] px-4 backdrop-blur-sm">
+          <div className="flex max-h-[88vh] w-full max-w-3xl flex-col rounded-[32px] border border-[rgba(96,165,250,0.22)] bg-[linear-gradient(180deg,rgba(15,20,46,0.98),rgba(10,14,39,0.97))] p-6 shadow-[0_30px_90px_rgba(0,0,0,0.35)]">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="text-[11px] font-black uppercase tracking-[0.2em] text-sky-200">Negotiation chat</div>
+                <h3 className="mt-2 text-2xl font-black text-white">
+                  {getUserName(activeConversation.from)} and {getUserName(activeConversation.to)}
+                </h3>
+                <p className="mt-2 text-sm text-[rgba(189,216,233,0.76)]">
+                  Discuss how the teaching will happen, confirm the price, align on the duration, and build the collaboration before the exchange is accepted.
+                </p>
+              </div>
+              <button
+                onClick={() => setActiveConversation(null)}
+                className="rounded-xl border border-[rgba(255,255,255,0.08)] p-2 text-[rgba(189,216,233,0.7)] transition hover:text-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="mt-5 grid gap-4 md:grid-cols-3">
+              <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-4 text-sm text-white">
+                <div className="text-[10px] font-black uppercase tracking-[0.18em] text-[rgba(189,216,233,0.5)]">Skill</div>
+                <div className="mt-2">{activeConversation.requestedSkill}</div>
+              </div>
+              <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-4 text-sm text-white">
+                <div className="text-[10px] font-black uppercase tracking-[0.18em] text-[rgba(189,216,233,0.5)]">Current pricing</div>
+                <div className="mt-2">{activeConversation.proposedCredits} credits</div>
+              </div>
+              <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-4 text-sm text-white">
+                <div className="text-[10px] font-black uppercase tracking-[0.18em] text-[rgba(189,216,233,0.5)]">Current duration</div>
+                <div className="mt-2">{activeConversation.proposedDuration} mins</div>
+              </div>
+            </div>
+
+            <div className="mt-5 flex-1 overflow-y-auto rounded-3xl border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)] p-4">
+              {conversationLoading ? (
+                <div className="flex h-48 items-center justify-center text-sm text-[rgba(189,216,233,0.62)]">
+                  Loading conversation...
+                </div>
+              ) : conversationMessages.length === 0 ? (
+                <div className="flex h-48 items-center justify-center text-sm text-[rgba(189,216,233,0.62)]">
+                  No messages yet. Start by discussing the learning goal, price, and schedule.
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {conversationMessages.map((message) => (
+                    <div
+                      key={message._id}
+                      className={cn(
+                        "flex",
+                        message.systemMessage
+                          ? "justify-center"
+                          : message.senderId?._id === currentUserId
+                            ? "justify-end"
+                            : "justify-start",
+                      )}
+                    >
+                      <div
+                        className={cn(
+                          "max-w-[78%] rounded-3xl px-4 py-3 text-sm shadow-[0_10px_24px_rgba(0,0,0,0.15)]",
+                          message.systemMessage
+                            ? "bg-[rgba(255,255,255,0.05)] text-[rgba(189,216,233,0.72)]"
+                            : message.senderId?._id === currentUserId
+                              ? "bg-[linear-gradient(135deg,#16A085,#12796d)] text-white"
+                              : "bg-[rgba(255,255,255,0.06)] text-white",
+                        )}
+                      >
+                        {!message.systemMessage && (
+                          <div className="mb-1 text-[10px] font-black uppercase tracking-[0.18em] text-white/70">
+                            {message.senderId?.fullName || "User"}
+                          </div>
+                        )}
+                        <div className="leading-6">{message.message}</div>
+                        {message.createdAt && (
+                          <div className="mt-2 text-[10px] uppercase tracking-[0.18em] text-white/60">
+                            {formatRelativeDate(message.createdAt)}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-5 flex gap-3">
+              <textarea
+                rows={3}
+                className={inputClass}
+                value={conversationDraft}
+                onChange={(event) => setConversationDraft(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && !event.shiftKey) {
+                    event.preventDefault();
+                    sendConversationMessage();
+                  }
+                }}
+                disabled={["declined", "expired"].includes(activeConversation.status)}
+                placeholder={
+                  ["declined", "expired"].includes(activeConversation.status)
+                    ? "This request is closed."
+                    : "Type a message about pricing, teaching plan, duration, or future collaboration."
+                }
+              />
+              <button
+                onClick={sendConversationMessage}
+                disabled={conversationSending || !conversationDraft.trim() || ["declined", "expired"].includes(activeConversation.status)}
+                className="inline-flex h-12 items-center gap-2 self-end rounded-2xl bg-[linear-gradient(135deg,#16A085,#12796d)] px-5 text-sm font-black uppercase tracking-[0.18em] text-white shadow-[0_14px_30px_rgba(22,160,133,0.22)] transition hover:opacity-95 disabled:opacity-60"
+              >
+                <Send className="h-4 w-4" />
+                Send
               </button>
             </div>
           </div>

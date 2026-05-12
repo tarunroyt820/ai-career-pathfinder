@@ -26,6 +26,7 @@ const notificationsRoutes = require('./routes/notificationsRoutes');
 const discoveryRoutes = require('./routes/discoveryRoutes');
 const agreementMessageRoutes = require('./routes/agreementMessageRoutes');
 const adminAnalyticsRoutes = require('./routes/adminAnalyticsRoutes');
+const adminUserRoutes = require('./routes/adminUserRoutes');
 const pushSubscriptionRoutes = require('./routes/pushSubscriptionRoutes');
 
 const app = express();
@@ -70,8 +71,12 @@ const selectedProvider = (process.env.AI_PROVIDER || 'groq').toLowerCase();
 const hasProviderKey = selectedProvider === 'groq'
     ? Boolean(process.env.GROQ_API_KEY)
     : (selectedProvider === 'huggingface' || selectedProvider === 'hf')
-        ? Boolean(process.env.HUGGINGFACE_API_KEY || process.env.HF_API_TOKEN)
-        : false;
+        ? Boolean(process.env.HUGGINGFACE_API_KEY || process.env.HUGGINGFACE_API_KEY_2 || process.env.HF_API_TOKEN || process.env.HF_TOKEN)
+        : selectedProvider === 'nvidia'
+            ? Boolean(process.env.NVIDIA_API_KEY || process.env.NVIDIA_TOKEN)
+            : selectedProvider === 'openrouter'
+                ? Boolean(process.env.OPENROUTER_API_KEY)
+                : false;
 
 if (!process.env.JWT_SECRET || !hasProviderKey) {
     console.error('Missing critical environment variables. Check .env file.');
@@ -191,6 +196,7 @@ app.use('/api/reviews', reviewsRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/discovery', discoveryRoutes);
 app.use('/api/admin/analytics', adminAnalyticsRoutes);
+app.use('/api/admin/users', adminUserRoutes);
 app.use('/api/push-subscriptions', pushSubscriptionRoutes);
 
 // Global Error Handler

@@ -6,11 +6,32 @@ const RETRY_DELAY_MS = Number(process.env.HF_RETRY_DELAY_MS || 800);
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const getApiKey = () => (process.env.HUGGINGFACE_API_KEY || process.env.HF_TOKEN || process.env.HF_API_TOKEN || "").trim();
+const getApiKey = (options = {}) => (
+    options.apiKey ||
+    (options.useSecondaryKey ? process.env.HUGGINGFACE_API_KEY_2 : "") ||
+    process.env.HUGGINGFACE_API_KEY ||
+    process.env.HUGGINGFACE_API_KEY_2 ||
+    process.env.HF_TOKEN ||
+    process.env.HF_API_TOKEN ||
+    ""
+).trim();
 
-const getModel = (options = {}) => options.model || process.env.HF_MODEL || process.env.HF_CHAT_MODEL || "";
+const hasImageContent = (messages = []) =>
+    Array.isArray(messages) && messages.some((message) => {
+        const content = message?.content;
+        return Array.isArray(content) && content.some((part) => part && typeof part === "object" && part.type === "image_url");
+    });
 
-const getClient = () => new InferenceClient(getApiKey());
+const getModel = (options = {}) =>
+    options.model ||
+    (hasImageContent(options.messages) ? process.env.HF_VISION_MODEL : "") ||
+    process.env.HF_MODEL ||
+    process.env.HF_CHAT_MODEL ||
+    process.env.HF_HEAVY_MODEL ||
+    process.env.HF_SKILLGAP_MODEL ||
+    "";
+
+const getClient = (apiKey) => new InferenceClient(apiKey);
 
 const isTransientError = (error) => {
     const status = Number(error?.status || 0);
@@ -39,18 +60,21 @@ const toProviderError = (error) => {
     return wrapped;
 };
 
-const buildChatOptions = (prompt, model, maxTokensOverride) => {
+const buildChatOptions = (prompt, model, maxTokensOverride, options = {}) => {
     const temperature = Number(process.env.HF_TEMPERATURE || 0.6);
     const maxTokens = Number(maxTokensOverride || process.env.HF_MAX_NEW_TOKENS || 1200);
-
-    return {
-        model,
-        messages: [
+    const messages = Array.isArray(options.messages) && options.messages.length > 0
+        ? options.messages
+        : [
             {
                 role: "user",
                 content: prompt,
             },
-        ],
+        ];
+
+    return {
+        model,
+        messages,
         temperature,
         max_tokens: maxTokens,
     };
@@ -67,7 +91,7 @@ const extractChatText = (payload) => {
 };
 
 const generateResponse = async (prompt, options = {}) => {
-    const apiKey = getApiKey();
+    const apiKey = getApiKey(options);
     if (!apiKey || apiKey.startsWith("REPLACE_")) {
         const error = new Error("HUGGINGFACE_API_KEY is missing for provider huggingface");
         error.code = "AI_NOT_CONFIGURED";
@@ -83,13 +107,13 @@ const generateResponse = async (prompt, options = {}) => {
         throw error;
     }
 
-    const client = getClient();
+    const client = getClient(apiKey);
     const maxTokens = options.maxTokens;
 
     let lastError = null;
     for (let attempt = 1; attempt <= RETRY_COUNT + 1; attempt += 1) {
         try {
-            const payload = await client.chatCompletion(buildChatOptions(prompt, model, maxTokens));
+            const payload = await client.chatCompletion(buildChatOptions(prompt, model, maxTokens, options));
             return String(extractChatText(payload) || "").trim();
         } catch (error) {
             lastError = error;
@@ -109,7 +133,7 @@ const generateResponse = async (prompt, options = {}) => {
 };
 
 const generateResponseStream = async (prompt, options = {}) => {
-    const apiKey = getApiKey();
+    const apiKey = getApiKey(options);
     if (!apiKey || apiKey.startsWith("REPLACE_")) {
         const error = new Error("HUGGINGFACE_API_KEY is missing for provider huggingface");
         error.code = "AI_NOT_CONFIGURED";
@@ -125,12 +149,12 @@ const generateResponseStream = async (prompt, options = {}) => {
         throw error;
     }
 
-    const client = getClient();
+    const client = getClient(apiKey);
     const maxTokens = options.maxTokens;
 
     let stream;
     try {
-        stream = await client.chatCompletionStream(buildChatOptions(prompt, model, maxTokens));
+        stream = await client.chatCompletionStream(buildChatOptions(prompt, model, maxTokens, options));
     } catch (error) {
         throw toProviderError(error);
     }

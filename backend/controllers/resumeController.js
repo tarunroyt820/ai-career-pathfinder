@@ -1,10 +1,16 @@
 const path = require('path');
 const fs = require('fs/promises');
 const aiService = require('../services/ai/ai.service');
+const ResumeUploadLog = require('../models/ResumeUploadLog');
 const { RESUME_ANALYSIS_PROMPT, JOB_TARGETED_ANALYSIS_PROMPT } = require('../services/ai/prompts/resumeAnalysis.prompt');
 const { extractResumeText } = require('../services/resumeTextExtractor');
 
 const uploadsDir = path.join(__dirname, '..', 'uploads');
+const getResumeModel = () =>
+	process.env.HF_RESUME_MODEL ||
+	process.env.HF_HEAVY_MODEL ||
+	process.env.HF_MODEL ||
+	process.env.HF_SKILLGAP_MODEL;
 
 const parseAnalysisJson = (raw) => {
 	const value = String(raw || '').trim();
@@ -41,8 +47,9 @@ const analyzeResumeFile = async (filePath, mimeType, targetRole = '') => {
 
 	let aiResult;
 	aiResult = await aiService.generate(analysisPrompt, {
-		provider: 'groq',
-		model: process.env.GROQ_RESUME_MODEL || process.env.GROQ_HEAVY_MODEL || process.env.GROQ_MODEL,
+		provider: 'huggingface',
+		model: getResumeModel(),
+		useSecondaryKey: true,
 	});
 
 	if (!String(aiResult?.text || '').trim()) {
@@ -52,10 +59,11 @@ const analyzeResumeFile = async (filePath, mimeType, targetRole = '') => {
 			`RESUME_TEXT:\n${extractedText.slice(0, 12000)}`,
 		].join('\n\n');
 
-		const preferredProvider = aiResult?.providerUsed || 'groq';
+		const preferredProvider = aiResult?.providerUsed || 'huggingface';
 		aiResult = await aiService.generate(retryPrompt, {
 			provider: preferredProvider,
-			model: process.env.GROQ_RESUME_MODEL || process.env.GROQ_HEAVY_MODEL || process.env.GROQ_MODEL,
+			model: getResumeModel(),
+			useSecondaryKey: true,
 		});
 	}
 
@@ -88,10 +96,27 @@ exports.uploadResume = async (req, res) => {
 		}
 
 		const fileUrl = `/uploads/${req.file.filename}`;
+		const targetRole = String(req.body?.targetRole || '').trim();
+		const analysisResult = await analyzeResumeFile(req.file.path, req.file.mimetype, targetRole);
+
+		await ResumeUploadLog.create({
+			userId: req.user._id || req.user.id,
+			originalName: req.file.originalname,
+			fileName: req.file.filename,
+			mimeType: req.file.mimetype,
+			size: req.file.size,
+			targetRole,
+			providerUsed: analysisResult.providerUsed || '',
+			modelUsed: analysisResult.modelUsed || ''
+		});
 
 		return res.status(200).json({
 			success: true,
 			message: 'Resume uploaded successfully',
+			providerUsed: analysisResult.providerUsed,
+			modelUsed: analysisResult.modelUsed,
+			analysis: analysisResult.analysis,
+			analysisRaw: analysisResult.analysisRaw,
 			file: {
 				originalName: req.file.originalname,
 				fileName: req.file.filename,

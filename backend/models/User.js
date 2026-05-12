@@ -20,6 +20,12 @@ const UserSchema = new mongoose.Schema({
         minlength: 6,
         select: false // Don't return password by default
     },
+    role: {
+        type: String,
+        enum: ['user', 'admin'],
+        default: 'user',
+        index: true
+    },
     isEmailVerified: {
         type: Boolean,
         default: false
@@ -140,6 +146,19 @@ const UserSchema = new mongoose.Schema({
     profilePhotoUrl: {
         type: String,
         default: ''
+    },
+    isSuspended: {
+        type: Boolean,
+        default: false,
+        index: true
+    },
+    suspensionReason: {
+        type: String,
+        default: ''
+    },
+    suspendedAt: {
+        type: Date,
+        default: null
     },
     lastActiveAt: {
         type: Date,

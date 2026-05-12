@@ -13,6 +13,8 @@ const NotificationSchema = new mongoose.Schema(
                 'request_received',
                 'request_accepted',
                 'request_declined',
+                'request_countered',
+                'request_message',
                 'session_reminder',
                 'noshow_alert',
                 'dispute_filed',

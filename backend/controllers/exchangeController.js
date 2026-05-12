@@ -8,6 +8,7 @@ const Session = require('../models/Session');
 const Dispute = require('../models/Dispute');
 const Review = require('../models/Review');
 const Notification = require('../models/Notification');
+const TradeRequestMessage = require('../models/TradeRequestMessage');
 const matchingService = require('../services/matchingService');
 const penaltyService = require('../services/penaltyService');
 const {
@@ -44,6 +45,15 @@ const parseTime = (value) => {
 
 const ensureAgreementParticipant = (agreement, userId) => {
     return agreement.participants.some((participantId) => participantId.toString() === userId.toString());
+};
+
+const ensureTradeRequestParticipant = (tradeRequest, userId) => {
+    return tradeRequest?.from?.toString() === userId.toString() || tradeRequest?.to?.toString() === userId.toString();
+};
+
+const getTradeRequestOtherParticipant = (tradeRequest, userId) => {
+    if (!tradeRequest) return null;
+    return tradeRequest.from.toString() === userId.toString() ? tradeRequest.to : tradeRequest.from;
 };
 
 const toObjectId = (id) => {
@@ -320,9 +330,13 @@ exports.searchExchangeUsers = async (req, res) => {
 
         let profiles = [];
 
-        if (type === 'name' || type === 'all') {
+        if (type === 'name' || type === 'all' || type === 'user') {
             // find users by fullName and populate their skill profiles
-            const users = await User.find({ fullName: regex }).select('_id fullName').lean();
+            const userQuery = mongoose.Types.ObjectId.isValid(queryText)
+                ? { $or: [{ fullName: regex }, { _id: queryText }] }
+                : { fullName: regex };
+
+            const users = await User.find(userQuery).select('_id fullName').lean();
             const userIds = users.map((u) => u._id);
             if (userIds.length > 0) {
                 const found = await SkillProfile.find({ userId: { $in: userIds } })
@@ -427,6 +441,15 @@ exports.createTradeRequest = async (req, res) => {
             expiresAt
         });
 
+        if (tradeRequest.message) {
+            await TradeRequestMessage.create({
+                tradeRequestId: tradeRequest._id,
+                senderId: req.user.id,
+                readBy: [req.user.id],
+                message: tradeRequest.message
+            });
+        }
+
         await sendNotification(to, 'request_received', {
             relatedId: tradeRequest._id,
             message: `New trade request from ${req.user.fullName || 'a user'}`
@@ -450,6 +473,77 @@ exports.listTradeRequests = async (req, res) => {
             .populate('to', 'fullName');
 
         res.json({ requests, type });
+    } catch (error) {
+        handleError(res, error);
+    }
+};
+
+exports.getTradeRequestMessages = async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) return fail(res, 400, 'Invalid trade request id');
+
+        const tradeRequest = await TradeRequest.findById(id);
+        if (!tradeRequest) return fail(res, 404, 'Trade request not found');
+        if (!ensureTradeRequestParticipant(tradeRequest, req.user.id)) return fail(res, 403, 'Not authorized for this request');
+
+        await TradeRequestMessage.updateMany(
+            {
+                tradeRequestId: tradeRequest._id,
+                senderId: { $ne: req.user.id },
+                readBy: { $ne: req.user.id }
+            },
+            {
+                $addToSet: { readBy: req.user.id }
+            }
+        );
+
+        const messages = await TradeRequestMessage.find({ tradeRequestId: tradeRequest._id })
+            .populate('senderId', 'fullName profilePhotoUrl')
+            .sort({ createdAt: 1 })
+            .lean();
+
+        res.json({ messages });
+    } catch (error) {
+        handleError(res, error);
+    }
+};
+
+exports.sendTradeRequestMessage = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const rawMessage = typeof req.body?.message === 'string' ? req.body.message : '';
+        const message = rawMessage.trim();
+
+        if (!mongoose.Types.ObjectId.isValid(id)) return fail(res, 400, 'Invalid trade request id');
+        if (!message) return fail(res, 400, 'Message required');
+        if (message.length > 2000) return fail(res, 400, 'Message exceeds 2000 characters');
+
+        const tradeRequest = await TradeRequest.findById(id);
+        if (!tradeRequest) return fail(res, 404, 'Trade request not found');
+        if (!ensureTradeRequestParticipant(tradeRequest, req.user.id)) return fail(res, 403, 'Not authorized for this request');
+        if (['declined', 'expired'].includes(tradeRequest.status)) {
+            return fail(res, 400, 'Cannot message on a closed request');
+        }
+
+        const requestMessage = await TradeRequestMessage.create({
+            tradeRequestId: tradeRequest._id,
+            senderId: req.user.id,
+            readBy: [req.user.id],
+            message
+        });
+
+        const populatedMessage = await TradeRequestMessage.findById(requestMessage._id)
+            .populate('senderId', 'fullName profilePhotoUrl')
+            .lean();
+
+        const otherUserId = getTradeRequestOtherParticipant(tradeRequest, req.user.id);
+        await sendNotification(otherUserId, 'request_message', {
+            relatedId: tradeRequest._id,
+            message: `${req.user.fullName || 'A user'} sent a message about your skill request`
+        });
+
+        res.status(201).json({ message: populatedMessage });
     } catch (error) {
         handleError(res, error);
     }
@@ -505,14 +599,25 @@ exports.acceptTradeRequest = async (req, res) => {
         // updateResponseRewards is safe to run after transaction commit
         await updateResponseRewards(req.user.id, tradeRequest.createdAt);
 
+        const finalAgreement = Array.isArray(agreement) ? agreement[0] : agreement;
+        if (finalAgreement?._id) {
+            await TradeRequestMessage.create({
+                tradeRequestId: tradeRequest._id,
+                senderId: req.user.id,
+                readBy: [req.user.id],
+                message: `Request accepted. Let's continue the learning conversation in the active exchange chat.`,
+                systemMessage: true
+            });
+        }
+
         // send notification for acceptance
-        const agreementId = Array.isArray(agreement) ? agreement[0]._id : agreement._id;
+        const agreementId = finalAgreement?._id;
         await sendNotification(tradeRequest.from, 'request_accepted', {
             relatedId: agreementId,
             message: 'Your trade request was accepted'
         });
 
-        res.json({ request: tradeRequest, agreement: Array.isArray(agreement) ? agreement[0] : agreement });
+        res.json({ request: tradeRequest, agreement: finalAgreement });
     } catch (error) {
         handleError(res, error);
     }
@@ -528,6 +633,14 @@ exports.declineTradeRequest = async (req, res) => {
         tradeRequest.status = 'declined';
         await tradeRequest.save();
         await updateResponseRewards(req.user.id, tradeRequest.createdAt);
+
+        await TradeRequestMessage.create({
+            tradeRequestId: tradeRequest._id,
+            senderId: req.user.id,
+            readBy: [req.user.id],
+            message: 'Request declined.',
+            systemMessage: true
+        });
 
         await sendNotification(tradeRequest.from, 'request_declined', {
             relatedId: tradeRequest._id,
@@ -556,6 +669,25 @@ exports.counterTradeRequest = async (req, res) => {
         tradeRequest.counterOffer = { credits, duration, message };
         await tradeRequest.save();
         await updateResponseRewards(req.user.id, tradeRequest.createdAt);
+
+        const counterSummary = [
+            credits !== undefined ? `credits: ${credits}` : null,
+            duration !== undefined ? `duration: ${duration} mins` : null,
+            message ? `note: ${message}` : null
+        ].filter(Boolean).join(' | ');
+
+        await TradeRequestMessage.create({
+            tradeRequestId: tradeRequest._id,
+            senderId: req.user.id,
+            readBy: [req.user.id],
+            message: counterSummary ? `Counter offer proposed (${counterSummary})` : 'Counter offer proposed',
+            systemMessage: true
+        });
+
+        await sendNotification(tradeRequest.from, 'request_countered', {
+            relatedId: tradeRequest._id,
+            message: `${req.user.fullName || 'A user'} sent a counter offer on your skill request`
+        });
 
         res.json({ request: tradeRequest });
     } catch (error) {
@@ -867,4 +999,3 @@ exports.markAllNotificationsRead = async (req, res) => {
         handleError(res, error);
     }
 };
-

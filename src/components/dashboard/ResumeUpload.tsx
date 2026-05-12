@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { Upload, FileText, CheckCircle, X } from "lucide-react";
 import { toast } from "sonner";
 import axios from "@/services/http";
+import { ResumeAnalysisReport } from "@/components/resume/ResumeAnalysisReport";
 
 const API_URL = `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/resume`;
 
@@ -172,27 +173,7 @@ export function ResumeUpload() {
       )}
 
       {analysis && (
-        <div className="rounded-2xl border border-border/40 bg-card/60 p-5 space-y-4">
-          <h3 className="text-lg font-black">ATS Analysis Report</h3>
-          <div className="grid gap-3 md:grid-cols-3">
-            <div className="rounded-xl bg-muted/30 p-3 text-sm font-semibold">ATS: {analysis?.scores?.atsCompatibility ?? "N/A"}</div>
-            <div className="rounded-xl bg-muted/30 p-3 text-sm font-semibold">Content: {analysis?.scores?.contentStrength ?? "N/A"}</div>
-            <div className="rounded-xl bg-muted/30 p-3 text-sm font-semibold">Overall: {analysis?.scores?.overallScore ?? "N/A"}</div>
-          </div>
-          {analysis?.summary && (
-            <p className="text-sm text-muted-foreground leading-relaxed">{analysis.summary}</p>
-          )}
-          {Array.isArray(analysis?.actionPlan) && analysis.actionPlan.length > 0 && (
-            <div>
-              <p className="text-sm font-black uppercase tracking-wider">Priority Action Plan</p>
-              <ul className="mt-2 list-disc pl-5 space-y-1 text-sm text-foreground">
-                {analysis.actionPlan.slice(0, 8).map((item: string, index: number) => (
-                  <li key={index}>{item}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
+        <ResumeAnalysisReport analysis={analysis} fileName={file?.name || undefined} targetRole={targetRole || undefined} />
       )}
     </div>
   );

@@ -5,7 +5,7 @@ import { RequestExchangeModal } from "./RequestExchangeModal";
 
 export function SearchProfiles() {
   const [q, setQ] = useState("");
-  const [type, setType] = useState<'all' | 'name' | 'skill'>('all');
+  const [type, setType] = useState<'all' | 'name' | 'skill' | 'user'>('all');
   const [results, setResults] = useState<SkillProfile[]>([]);
   const [loading, setLoading] = useState(false);
   const [page] = useState(1);
@@ -33,7 +33,7 @@ export function SearchProfiles() {
       <div className="flex gap-2">
         <input
           className="flex-1 rounded-md bg-[#0b1120] p-3 text-white"
-          placeholder="Search by name or skill..."
+          placeholder="Search by name, user ID, or skill..."
           value={q}
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') doSearch(); }}
@@ -41,6 +41,7 @@ export function SearchProfiles() {
         <select className="rounded-md bg-[#0b1120] p-3 text-white" value={type} onChange={(e) => setType(e.target.value as any)}>
           <option value="all">All</option>
           <option value="name">Name</option>
+          <option value="user">User ID</option>
           <option value="skill">Skill</option>
         </select>
         <Button onClick={doSearch} disabled={loading}>{loading ? 'Searching...' : 'Search'}</Button>

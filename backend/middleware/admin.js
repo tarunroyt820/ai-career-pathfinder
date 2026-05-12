@@ -4,8 +4,15 @@ const adminMiddleware = (req, res, next) => {
         .map((id) => id.trim())
         .filter(Boolean);
 
-    if (!req.user || !adminIds.includes(String(req.user.id || req.user._id))) {
-        return res.status(403).json({ message: "Admin access required" });
+    const userId = String(req.user?.id || req.user?._id || '');
+    const isRoleAdmin = req.user?.role === 'admin';
+    const isEnvAdmin = adminIds.includes(userId);
+
+    if (!req.user || (!isRoleAdmin && !isEnvAdmin)) {
+        return res.status(403).json({
+            success: false,
+            message: "Admin access required"
+        });
     }
 
     return next();

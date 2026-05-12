@@ -14,21 +14,28 @@ const { initializeQueue, closeQueue } = require('./queues/aiQueue');
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const waitForDatabase = async () => {
-    while (!connectDB.isDatabaseConnected()) {
-        try {
-            await connectDB();
-        } catch (error) {
-            console.error(`[db] Waiting for MongoDB before opening the API: ${error.message}`);
-            await sleep(5000);
-        }
+const runIfDatabaseConnected = (jobName, jobFn) => {
+    if (!connectDB.isDatabaseConnected()) {
+        console.warn(`[${jobName}] Skipping run because MongoDB is not connected yet.`);
+        return;
     }
+
+    jobFn().catch((error) => {
+        console.error(`[${jobName}] Failed to run: ${error.message}`);
+    });
 };
 
 const startServer = async () => {
     const PORT = process.env.PORT || 5000;
 
-    await waitForDatabase();
+    // Start the server immediately so the API stays reachable even if
+    // MongoDB Atlas is temporarily unavailable. The database layer will keep
+    // retrying in the background and route middleware will return 503s until
+    // the connection is restored.
+    connectDB().catch((error) => {
+        console.error(`[db] Initial MongoDB connection failed: ${error.message}`);
+        console.error('[db] The API will continue starting and keep retrying in the background.');
+    });
 
     // Initialize AI queue
     try {
@@ -39,10 +46,12 @@ const startServer = async () => {
 
     app.listen(PORT, () => {
         console.log(`Server running on port ${PORT}`);
-        console.log(`[BUILD] AI stack: Groq / Hugging Face`);
+        console.log(`[BUILD] AI stack: Groq / Hugging Face / NVIDIA / OpenRouter`);
         console.log(`AI Provider: ${process.env.AI_PROVIDER || 'groq (default)'}`);
+        console.log(`Career Path Provider: ${process.env.CAREER_PATH_PROVIDER || process.env.AI_PROVIDER || 'groq'}`);
         console.log(`Groq key loaded: ${process.env.GROQ_API_KEY ? 'YES' : 'NO - check backend/.env'}`);
-        console.log(`HF token loaded: ${(process.env.HUGGINGFACE_API_KEY || process.env.HF_API_TOKEN) ? 'YES' : 'NO - check backend/.env'}`);
+        console.log(`OpenRouter key loaded: ${process.env.OPENROUTER_API_KEY ? 'YES' : 'NO - check backend/.env'}`);
+        console.log(`HF token loaded: ${(process.env.HUGGINGFACE_API_KEY || process.env.HUGGINGFACE_API_KEY_2 || process.env.HF_API_TOKEN || process.env.HF_TOKEN) ? 'YES' : 'NO - check backend/.env'}`);
         console.log(`CORS allows: ${process.env.FRONTEND_URL || 'http://localhost:5173 (default)'}`);
     });
 
@@ -60,34 +69,24 @@ const startServer = async () => {
     });
 
     setInterval(() => {
-        expireOldRequests().catch((error) => {
-            console.error(`[request-expiry] Failed to run expiry job: ${error.message}`);
-        });
+        runIfDatabaseConnected('request-expiry', expireOldRequests);
     }, 60 * 60 * 1000);
 
     // Run reminders every 15 minutes for reliable window capture.
     setInterval(() => {
-        runReminderJob().catch((error) => {
-            console.error(`[reminder-job] Failed to run reminder job: ${error.message}`);
-        });
+        runIfDatabaseConnected('reminder-job', runReminderJob);
     }, 15 * 60 * 1000);
 
     // Run career plan milestone reminders every 30 minutes
     setInterval(() => {
-        runCareerPlanReminderJob().catch((error) => {
-            console.error(`[career-plan-reminder] Failed to run job: ${error.message}`);
-        });
+        runIfDatabaseConnected('career-plan-reminder', runCareerPlanReminderJob);
     }, 30 * 60 * 1000);
 
     // Prime quality score metrics quickly, then refresh every hour.
-    runQualityScoreJob().catch((error) => {
-        console.error(`[quality-score] Initial run failed: ${error.message}`);
-    });
+    runIfDatabaseConnected('quality-score', runQualityScoreJob);
 
     setInterval(() => {
-        runQualityScoreJob().catch((error) => {
-            console.error(`[quality-score] Hourly run failed: ${error.message}`);
-        });
+        runIfDatabaseConnected('quality-score', runQualityScoreJob);
     }, 60 * 60 * 1000);
 };
 

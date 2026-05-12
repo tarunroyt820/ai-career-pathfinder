@@ -4,6 +4,8 @@ const defaultMessageByType = {
     request_received: 'You received a new trade request.',
     request_accepted: 'Your trade request was accepted.',
     request_declined: 'Your trade request was declined.',
+    request_countered: 'A counter offer was sent on your trade request.',
+    request_message: 'You received a new message on a trade request.',
     session_reminder: 'Reminder: you have a session in the next 24 hours.',
     noshow_alert: 'A no-show report has been filed.',
     dispute_filed: 'A dispute has been filed for one of your exchanges.',

@@ -72,12 +72,19 @@ export function SkillExchangesPage() {
   const [nowTimestamp, setNowTimestamp] = useState(Date.now());
   const navigate = useNavigate();
 
+  const normalizeList = <T,>(value: T[] | undefined | null): T[] => (Array.isArray(value) ? value : []);
+
   const load = async () => {
     try {
-      const agreementsData = await getAgreements();
+      const agreementsData = normalizeList(await getAgreements());
       setAgreements(agreementsData);
-      const pairs = await Promise.all(agreementsData.map(async (agreement) => [agreement._id, await getSessions(agreement._id)] as const));
-      setSessionsByAgreement(Object.fromEntries(pairs));
+      const sessionResults = await Promise.allSettled(
+        agreementsData.map(async (agreement) => [agreement._id, await getSessions(agreement._id)] as const),
+      );
+      const sessionPairs = sessionResults
+        .filter((result): result is PromiseFulfilledResult<readonly [string, Session[]]> => result.status === "fulfilled")
+        .map((result) => result.value);
+      setSessionsByAgreement(Object.fromEntries(sessionPairs));
 
       const completedAgreements = agreementsData.filter((agreement) => agreement.status === "completed");
       const participantsByAgreement = Object.fromEntries(
@@ -97,11 +104,15 @@ export function SkillExchangesPage() {
         new Set(Object.values(participantsByAgreement).filter((partnerId) => Boolean(partnerId))),
       );
 
-      const reviewsByPartner = await Promise.all(
+      const reviewsByPartner = await Promise.allSettled(
         uniquePartnerIds.map(async (partnerId) => [partnerId, await getReviews(partnerId)] as const),
       );
 
-      const reviewLookup = new Map<string, Review[]>(reviewsByPartner);
+      const reviewPairs = reviewsByPartner
+        .filter((result): result is PromiseFulfilledResult<readonly [string, Review[]]> => result.status === "fulfilled")
+        .map((result) => result.value);
+
+      const reviewLookup = new Map<string, Review[]>(reviewPairs);
       const reviewedMap: Record<string, boolean> = {};
 
       completedAgreements.forEach((agreement) => {

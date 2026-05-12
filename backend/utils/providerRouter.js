@@ -1,4 +1,4 @@
-const SUPPORTED_PROVIDERS = new Set(["groq", "huggingface", "hf"]);
+const SUPPORTED_PROVIDERS = new Set(["groq", "huggingface", "hf", "nvidia", "openrouter"]);
 
 const DEFAULT_PROVIDER = (() => {
     const value = String(process.env.AI_PROVIDER || "groq").toLowerCase().trim();
@@ -26,6 +26,20 @@ const MODEL_POLICY_BY_PROVIDER = {
         skillgap: process.env.HF_SKILLGAP_MODEL || process.env.HF_HEAVY_MODEL || process.env.HF_MODEL || "",
         resume: process.env.HF_HEAVY_MODEL || process.env.HF_MODEL || "",
         reasoning: process.env.HF_HEAVY_MODEL || process.env.HF_MODEL || "",
+    },
+    nvidia: {
+        chat: process.env.NVIDIA_MODEL || process.env.NVIDIA_CHAT_MODEL || process.env.NVIDIA_HEAVY_MODEL || 'meta/llama-3.1-8b-instruct',
+        roadmap: process.env.NVIDIA_MODEL || process.env.NVIDIA_CHAT_MODEL || process.env.NVIDIA_HEAVY_MODEL || 'meta/llama-3.1-8b-instruct',
+        skillgap: process.env.NVIDIA_MODEL || process.env.NVIDIA_CHAT_MODEL || process.env.NVIDIA_HEAVY_MODEL || 'meta/llama-3.1-8b-instruct',
+        resume: process.env.NVIDIA_MODEL || process.env.NVIDIA_CHAT_MODEL || process.env.NVIDIA_HEAVY_MODEL || 'meta/llama-3.1-8b-instruct',
+        reasoning: process.env.NVIDIA_MODEL || process.env.NVIDIA_CHAT_MODEL || process.env.NVIDIA_HEAVY_MODEL || 'meta/llama-3.1-8b-instruct',
+    },
+    openrouter: {
+        chat: process.env.OPENROUTER_MODEL || process.env.OPENROUTER_CHAT_MODEL || process.env.OPENROUTER_HEAVY_MODEL || 'google/gemma-4-26b-a4b-it:free',
+        roadmap: process.env.OPENROUTER_ROADMAP_MODEL || process.env.OPENROUTER_MODEL || process.env.OPENROUTER_CHAT_MODEL || process.env.OPENROUTER_HEAVY_MODEL || 'google/gemma-4-26b-a4b-it:free',
+        skillgap: process.env.OPENROUTER_MODEL || process.env.OPENROUTER_CHAT_MODEL || process.env.OPENROUTER_HEAVY_MODEL || 'google/gemma-4-26b-a4b-it:free',
+        resume: process.env.OPENROUTER_MODEL || process.env.OPENROUTER_CHAT_MODEL || process.env.OPENROUTER_HEAVY_MODEL || 'google/gemma-4-26b-a4b-it:free',
+        reasoning: process.env.OPENROUTER_MODEL || process.env.OPENROUTER_CHAT_MODEL || process.env.OPENROUTER_HEAVY_MODEL || 'google/gemma-4-26b-a4b-it:free',
     },
 };
 

@@ -58,6 +58,15 @@ export interface TradeRequest {
   createdAt: string;
 }
 
+export interface TradeRequestMessage {
+  _id: string;
+  tradeRequestId: string;
+  senderId?: { _id?: string; fullName?: string; profilePhotoUrl?: string } | null;
+  message: string;
+  systemMessage?: boolean;
+  createdAt?: string;
+}
+
 export interface Agreement {
   _id: string;
   participants: Array<{ _id: string; fullName?: string } | string>;
@@ -180,7 +189,7 @@ export const getMatches = async (skill: string, page = 1, limit = 12): Promise<{
   }
 };
 
-export const searchProfiles = async (q: string, type: 'all' | 'skill' | 'name' = 'all', page = 1, limit = 20): Promise<{ profiles: SkillProfile[]; total: number; page: number }> => {
+export const searchProfiles = async (q: string, type: 'all' | 'skill' | 'name' | 'user' = 'all', page = 1, limit = 20): Promise<{ profiles: SkillProfile[]; total: number; page: number }> => {
   try {
     const params = new URLSearchParams();
     params.set('q', q);
@@ -245,6 +254,30 @@ export const declineTradeRequest = async (requestId: string): Promise<void> => {
 export const counterTradeRequest = async (requestId: string, payload: { credits?: number; duration?: number; message?: string }): Promise<void> => {
   try {
     await axios.patch(`${BASE_URL}/requests/${requestId}/counter`, payload, { headers: getAuthHeader() });
+  } catch (error) {
+    throw new Error(parseApiError(error));
+  }
+};
+
+export const getTradeRequestMessages = async (requestId: string): Promise<TradeRequestMessage[]> => {
+  try {
+    const response = await axios.get<{ messages: TradeRequestMessage[] }>(`${BASE_URL}/requests/${requestId}/messages`, {
+      headers: getAuthHeader(),
+    });
+    return response.data.messages || [];
+  } catch (error) {
+    throw new Error(parseApiError(error));
+  }
+};
+
+export const sendTradeRequestMessage = async (requestId: string, message: string): Promise<TradeRequestMessage> => {
+  try {
+    const response = await axios.post<{ message: TradeRequestMessage }>(
+      `${BASE_URL}/requests/${requestId}/messages`,
+      { message },
+      { headers: getAuthHeader() },
+    );
+    return response.data.message;
   } catch (error) {
     throw new Error(parseApiError(error));
   }
@@ -348,10 +381,13 @@ export const getReviews = async (userId: string): Promise<Review[]> => {
 
 export const getNotifications = async (): Promise<NotificationItem[]> => {
   try {
-    const response = await axios.get<{ notifications: NotificationItem[] }>(`${BASE_URL}/notifications`, {
+    const response = await axios.get<{
+      notifications?: NotificationItem[];
+      data?: { notifications?: NotificationItem[] };
+    }>(`${BASE_URL}/notifications`, {
       headers: getAuthHeader(),
     });
-    return response.data.notifications;
+    return response.data.notifications || response.data.data?.notifications || [];
   } catch (error) {
     throw new Error(parseApiError(error));
   }

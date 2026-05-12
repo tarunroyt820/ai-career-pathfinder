@@ -1,166 +1,330 @@
 import { useEffect, useState } from "react";
-import { fetchAdminSummary, fetchHighRiskUsers, type AdminAnalyticsSummary, type HighRiskUser } from "@/services/adminAnalyticsApi";
+import {
+  fetchAdminSummary,
+  fetchAiLogs,
+  fetchFailedAiRequests,
+  type AdminSummaryResponse,
+  type AIRequestLogItem,
+} from "@/services/adminAnalyticsApi";
+import {
+  fetchAdminUsers,
+  suspendAdminUser,
+  unsuspendAdminUser,
+  deleteAdminUser,
+  type AdminUser,
+} from "@/services/adminUserApi";
 import { Button } from "@/components/common/Button";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  CartesianGrid,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+} from "recharts";
 
 const cardClass = "rounded-2xl border border-[rgba(22,160,133,0.25)] bg-[rgba(20,37,62,0.55)] p-4";
-
-const formatPercent = (value: number) => `${Math.round(value * 100)}%`;
+const colors = ["#16A085", "#22C55E", "#F59E0B", "#EF4444", "#3B82F6", "#A855F7"];
 
 export default function AdminDashboard() {
-  const [summary, setSummary] = useState<AdminAnalyticsSummary | null>(null);
-  const [highRiskUsers, setHighRiskUsers] = useState<HighRiskUser[]>([]);
+  const [summary, setSummary] = useState<AdminSummaryResponse["data"] | null>(null);
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [userSearch, setUserSearch] = useState("");
+  const [aiSearch, setAiSearch] = useState("");
+  const [aiLogs, setAiLogs] = useState<AIRequestLogItem[]>([]);
+  const [failedAiLogs, setFailedAiLogs] = useState<AIRequestLogItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState("");
 
-  const loadSummary = async () => {
+  const loadAll = async () => {
     try {
       setLoading(true);
-      setError(null);
-      const [summaryResponse, highRiskResponse] = await Promise.all([
+      setError("");
+      const [summaryRes, usersRes, aiLogsRes, failedRes] = await Promise.all([
         fetchAdminSummary(),
-        fetchHighRiskUsers(),
+        fetchAdminUsers(userSearch, 1, 10),
+        fetchAiLogs(aiSearch, 1, 20),
+        fetchFailedAiRequests(),
       ]);
-      setSummary(summaryResponse.data);
-      setHighRiskUsers(Array.isArray(highRiskResponse.data?.users) ? highRiskResponse.data.users : []);
+
+      setSummary(summaryRes.data.data);
+      setUsers(usersRes.data.data.items || []);
+      setAiLogs(aiLogsRes.data.data.items || []);
+      setFailedAiLogs(failedRes.data.data || []);
     } catch (err: any) {
-      const message = err?.response?.data?.message || "Failed to load admin analytics";
-      setError(message);
-      setSummary(null);
-      setHighRiskUsers([]);
+      setError(err?.response?.data?.message || "Failed to load admin dashboard");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadSummary();
+    loadAll();
   }, []);
 
+  const reloadUsers = async () => {
+    const usersRes = await fetchAdminUsers(userSearch, 1, 10);
+    setUsers(usersRes.data.data.items || []);
+  };
+
+  const handleSuspend = async (id: string) => {
+    const reason = window.prompt("Enter suspension reason", "Violation of platform rules");
+    if (!reason) return;
+    await suspendAdminUser(id, reason);
+    await reloadUsers();
+  };
+
+  const handleUnsuspend = async (id: string) => {
+    await unsuspendAdminUser(id);
+    await reloadUsers();
+  };
+
+  const handleDelete = async (id: string) => {
+    const ok = window.confirm("Delete this user and related records?");
+    if (!ok) return;
+    await deleteAdminUser(id);
+    await reloadUsers();
+  };
+
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="mx-auto max-w-7xl space-y-6">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-black text-white">Admin Analytics</h1>
-          <p className="text-sm text-[rgba(189,216,233,0.75)]">Platform health and reliability summary.</p>
+          <h1 className="text-3xl font-black text-white">Admin Dashboard</h1>
+          <p className="text-sm text-[rgba(189,216,233,0.75)]">
+            Users, career plans, resume uploads, AI monitoring, and platform analytics.
+          </p>
         </div>
-        <Button variant="outline" onClick={loadSummary} disabled={loading}>
+        <Button variant="outline" onClick={loadAll} disabled={loading}>
           {loading ? "Refreshing..." : "Refresh"}
         </Button>
       </div>
 
       {error && (
-        <div className="rounded-2xl border border-red-300/40 bg-red-900/20 p-4 text-sm text-red-200">
+        <div className="rounded-2xl border border-red-400/30 bg-red-900/20 p-4 text-sm text-red-200">
           {error}
         </div>
       )}
 
-      {loading && !summary && (
-        <div className={cardClass}>Loading analytics...</div>
-      )}
-
-      {!loading && !error && summary && (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      {summary && (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
           <div className={cardClass}>
             <p className="text-xs uppercase tracking-wide text-[rgba(189,216,233,0.7)]">Total Users</p>
-            <p className="mt-2 text-2xl font-bold text-white">{summary.totalUsers}</p>
+            <p className="mt-2 text-2xl font-bold text-white">{summary.totals.totalUsers}</p>
           </div>
-
           <div className={cardClass}>
-            <p className="text-xs uppercase tracking-wide text-[rgba(189,216,233,0.7)]">Active Users (7d)</p>
-            <p className="mt-2 text-2xl font-bold text-white">{summary.activeUsers}</p>
+            <p className="text-xs uppercase tracking-wide text-[rgba(189,216,233,0.7)]">Total Career Plans</p>
+            <p className="mt-2 text-2xl font-bold text-white">{summary.totals.totalCareerPlans}</p>
           </div>
-
           <div className={cardClass}>
-            <p className="text-xs uppercase tracking-wide text-[rgba(189,216,233,0.7)]">Total Agreements</p>
-            <p className="mt-2 text-2xl font-bold text-white">{summary.totalAgreements}</p>
+            <p className="text-xs uppercase tracking-wide text-[rgba(189,216,233,0.7)]">Resumes Uploaded</p>
+            <p className="mt-2 text-2xl font-bold text-white">{summary.totals.totalResumesUploaded}</p>
           </div>
-
           <div className={cardClass}>
-            <p className="text-xs uppercase tracking-wide text-[rgba(189,216,233,0.7)]">Completed Agreements</p>
-            <p className="mt-2 text-2xl font-bold text-white">{summary.completedAgreements}</p>
+            <p className="text-xs uppercase tracking-wide text-[rgba(189,216,233,0.7)]">Total AI Requests</p>
+            <p className="mt-2 text-2xl font-bold text-white">{summary.totals.totalAIRequests}</p>
           </div>
-
           <div className={cardClass}>
-            <p className="text-xs uppercase tracking-wide text-[rgba(189,216,233,0.7)]">Completion Rate</p>
-            <p className="mt-2 text-2xl font-bold text-white">{formatPercent(summary.platformCompletionRate)}</p>
-          </div>
-
-          <div className={cardClass}>
-            <p className="text-xs uppercase tracking-wide text-[rgba(189,216,233,0.7)]">Open Disputes</p>
-            <p className="mt-2 text-2xl font-bold text-white">{summary.openDisputes}</p>
-          </div>
-
-          <div className={cardClass}>
-            <p className="text-xs uppercase tracking-wide text-[rgba(189,216,233,0.7)]">Expired Requests</p>
-            <p className="mt-2 text-2xl font-bold text-white">{summary.expiredRequests}</p>
-          </div>
-
-          <div className={cardClass}>
-            <p className="text-xs uppercase tracking-wide text-[rgba(189,216,233,0.7)]">Average Quality Score</p>
-            <p className="mt-2 text-2xl font-bold text-white">{summary.averageQualityScore.toFixed(2)}</p>
-          </div>
-
-          <div className={cardClass}>
-            <p className="text-xs uppercase tracking-wide text-[rgba(189,216,233,0.7)]">Avg Completion Streak</p>
-            <p className="mt-2 text-2xl font-bold text-white">{summary.averageCompletionStreak.toFixed(2)}</p>
-          </div>
-
-          <div className={cardClass}>
-            <p className="text-xs uppercase tracking-wide text-[rgba(189,216,233,0.7)]">Users With Achievements</p>
-            <p className="mt-2 text-2xl font-bold text-white">{formatPercent(summary.achievementPercentage)}</p>
+            <p className="text-xs uppercase tracking-wide text-[rgba(189,216,233,0.7)]">Active Users</p>
+            <p className="mt-2 text-2xl font-bold text-white">{summary.totals.activeUsers}</p>
           </div>
         </div>
       )}
 
-      {!loading && !error && highRiskUsers.length > 0 && (
-        <div className="rounded-2xl border border-[rgba(245,158,11,0.35)] bg-[rgba(245,158,11,0.08)] p-5">
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <div>
-              <h2 className="text-xl font-bold text-white">⚠ High Risk Users</h2>
-              <p className="text-sm text-[rgba(189,216,233,0.75)]">Accounts flagged by quality and behavioral patterns.</p>
+      {summary && (
+        <div className="grid gap-6 xl:grid-cols-3">
+          <div className={cardClass}>
+            <h2 className="mb-3 text-lg font-bold text-white">Popular Career Roles</h2>
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={summary.charts.popularRoles}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+                  <XAxis dataKey="role" stroke="#cbd5e1" />
+                  <YAxis stroke="#cbd5e1" />
+                  <Tooltip />
+                  <Bar dataKey="count" fill="#16A085" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {highRiskUsers.map((user) => (
-              <div key={user._id || user.fullName} className="rounded-xl border border-[rgba(245,158,11,0.25)] bg-[rgba(20,37,62,0.45)] p-4">
-                <p className="text-base font-bold text-white">{user.fullName || "Unknown User"}</p>
-                <p className="text-sm text-[rgba(189,216,233,0.8)]">Trust: {Number(user.trustScore || 0)}</p>
-                <p className="text-sm text-[rgba(189,216,233,0.8)]">Quality: {Number(user.qualityScore || 0).toFixed(2)}</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {(user.riskFlags || []).map((flag) => (
-                    <span key={flag} className="rounded-full bg-[rgba(245,158,11,0.18)] px-2 py-1 text-[11px] font-semibold text-[rgba(255,236,196,0.95)]">
-                      {flag}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ))}
+          <div className={cardClass}>
+            <h2 className="mb-3 text-lg font-bold text-white">User Growth</h2>
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={summary.charts.userGrowth}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+                  <XAxis dataKey="month" stroke="#cbd5e1" />
+                  <YAxis stroke="#cbd5e1" />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="count" stroke="#22C55E" strokeWidth={3} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className={cardClass}>
+            <h2 className="mb-3 text-lg font-bold text-white">AI Usage by Provider</h2>
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={summary.aiUsage.byProvider}
+                    dataKey="count"
+                    nameKey="provider"
+                    outerRadius={95}
+                    label
+                  >
+                    {summary.aiUsage.byProvider.map((_, index) => (
+                      <Cell key={index} fill={colors[index % colors.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
       )}
 
-      {!loading && !error && summary?.topCompletionStreakUsers?.length ? (
-        <div className="rounded-2xl border border-[rgba(34,197,94,0.28)] bg-[rgba(34,197,94,0.08)] p-5">
-          <h2 className="text-xl font-bold text-white">Top Streak Holders</h2>
-          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {summary.topCompletionStreakUsers.map((user) => (
-              <div key={user._id || user.fullName} className="rounded-xl border border-[rgba(34,197,94,0.18)] bg-[rgba(20,37,62,0.45)] p-4">
-                <p className="text-base font-bold text-white">{user.fullName || "Unknown User"}</p>
-                <p className="text-sm text-[rgba(189,216,233,0.8)]">Completion Streak: {Number(user.completionStreak || 0)}</p>
-                <p className="text-sm text-[rgba(189,216,233,0.8)]">Response Streak: {Number(user.responseStreak || 0)}</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {(user.achievements || []).map((achievement) => (
-                    <span key={achievement} className="rounded-full bg-[rgba(34,197,94,0.18)] px-2 py-1 text-[11px] font-semibold text-[rgba(220,252,231,0.95)]">
-                      {achievement}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ))}
+      {summary && (
+        <div className={cardClass}>
+          <h2 className="mb-3 text-lg font-bold text-white">Plan Creation by Month</h2>
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={summary.charts.planCreationStats}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+                <XAxis dataKey="month" stroke="#cbd5e1" />
+                <YAxis stroke="#cbd5e1" />
+                <Tooltip />
+                <Bar dataKey="count" fill="#3B82F6" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </div>
-      ) : null}
+      )}
+
+      <div className={cardClass}>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 className="text-lg font-bold text-white">User Management</h2>
+          <div className="flex gap-2">
+            <input
+              value={userSearch}
+              onChange={(e) => setUserSearch(e.target.value)}
+              placeholder="Search users"
+              className="rounded-lg border border-white/10 bg-[#0b1730] px-3 py-2 text-sm text-white"
+            />
+            <Button variant="outline" onClick={reloadUsers}>Search</Button>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-left text-sm text-slate-200">
+            <thead>
+              <tr className="border-b border-white/10 text-slate-400">
+                <th className="py-2">Name</th>
+                <th className="py-2">Email</th>
+                <th className="py-2">Role</th>
+                <th className="py-2">Status</th>
+                <th className="py-2">Last Active</th>
+                <th className="py-2">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map((user) => (
+                <tr key={user._id} className="border-b border-white/5">
+                  <td className="py-3">{user.fullName}</td>
+                  <td className="py-3">{user.email}</td>
+                  <td className="py-3">{user.role}</td>
+                  <td className="py-3">{user.isSuspended ? "Suspended" : "Active"}</td>
+                  <td className="py-3">{user.lastActiveAt ? new Date(user.lastActiveAt).toLocaleString() : "N/A"}</td>
+                  <td className="py-3 flex gap-2">
+                    {user.isSuspended ? (
+                      <Button variant="outline" onClick={() => handleUnsuspend(user._id)}>Unsuspend</Button>
+                    ) : (
+                      <Button variant="outline" onClick={() => handleSuspend(user._id)}>Suspend</Button>
+                    )}
+                    <Button variant="outline" onClick={() => handleDelete(user._id)}>Delete</Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className={cardClass}>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 className="text-lg font-bold text-white">AI Monitoring</h2>
+          <div className="flex gap-2">
+            <input
+              value={aiSearch}
+              onChange={(e) => setAiSearch(e.target.value)}
+              placeholder="Search AI logs"
+              className="rounded-lg border border-white/10 bg-[#0b1730] px-3 py-2 text-sm text-white"
+            />
+            <Button variant="outline" onClick={loadAll}>Search</Button>
+          </div>
+        </div>
+
+        <div className="mb-3 text-sm text-slate-300">
+          Failed AI requests: <span className="font-bold text-white">{summary?.aiUsage.failedRequests ?? 0}</span>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-left text-sm text-slate-200">
+            <thead>
+              <tr className="border-b border-white/10 text-slate-400">
+                <th className="py-2">User</th>
+                <th className="py-2">Endpoint</th>
+                <th className="py-2">Provider</th>
+                <th className="py-2">Status</th>
+                <th className="py-2">Latency</th>
+                <th className="py-2">Time</th>
+              </tr>
+            </thead>
+            <tbody>
+              {aiLogs.map((log) => (
+                <tr key={log._id} className="border-b border-white/5">
+                  <td className="py-3">{log.userId?.fullName || log.userId?.email || "Unknown"}</td>
+                  <td className="py-3">{log.endpoint}</td>
+                  <td className="py-3">{log.provider || "N/A"}</td>
+                  <td className="py-3">{log.status}</td>
+                  <td className="py-3">{log.latencyMs}ms</td>
+                  <td className="py-3">{new Date(log.createdAt).toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className={cardClass}>
+        <h2 className="mb-4 text-lg font-bold text-white">Recent Failed AI Requests</h2>
+        <div className="space-y-3">
+          {failedAiLogs.map((log) => (
+            <div key={log._id} className="rounded-xl border border-red-400/20 bg-red-900/10 p-3">
+              <p className="text-sm font-semibold text-white">
+                {log.endpoint} • {log.provider || "unknown provider"}
+              </p>
+              <p className="text-xs text-red-200">
+                {log.errorCode || "ERROR"}: {log.errorMessage || "Unknown failure"}
+              </p>
+              <p className="mt-1 text-xs text-slate-400">
+                {new Date(log.createdAt).toLocaleString()}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

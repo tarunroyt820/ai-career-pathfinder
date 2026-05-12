@@ -5,9 +5,11 @@ const controller = require("../controllers/adminAnalyticsController");
 
 const router = express.Router();
 
+router.get("/access", protect, adminMiddleware, (_req, res) => {
+    return res.json({ success: true, isAdmin: true });
+});
 router.get("/summary", protect, adminMiddleware, controller.getSummary);
-router.get("/quality-distribution", protect, adminMiddleware, controller.getQualityDistribution);
-router.get("/trust-distribution", protect, adminMiddleware, controller.getTrustDistribution);
-router.get("/high-risk-users", protect, adminMiddleware, controller.getHighRiskUsers);
+router.get("/ai-logs", protect, adminMiddleware, controller.getAiLogs);
+router.get("/failed-ai-requests", protect, adminMiddleware, controller.getFailedAiRequests);
 
 module.exports = router;

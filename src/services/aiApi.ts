@@ -22,7 +22,7 @@ const getAuthHeader = () => {
 
 export const askAI = async (
     question: string,
-    options?: { provider?: "groq" | "huggingface" | "hf" }
+    options?: { provider?: "groq" | "huggingface" | "hf"; imageUrls?: string[] }
 ): Promise<AIResponse> => {
     try {
         const response = await axios.post<AIResponse>(
@@ -30,6 +30,7 @@ export const askAI = async (
             {
                 question,
                 provider: options?.provider,
+                imageUrls: options?.imageUrls,
             },
             { headers: getAuthHeader() }
         );
@@ -43,7 +44,7 @@ export const askAI = async (
 export const streamAI = async (
     question: string,
     onChunk: (text: string) => void,
-    options?: { provider?: "groq" | "huggingface" | "hf" }
+    options?: { provider?: "groq" | "huggingface" | "hf"; imageUrls?: string[] }
 ): Promise<void> => {
     const token = localStorage.getItem("nextro_token");
     const headers: Record<string, string> = {
@@ -60,6 +61,7 @@ export const streamAI = async (
         body: JSON.stringify({
             message: question,
             provider: options?.provider,
+            imageUrls: options?.imageUrls,
         }),
     });
 

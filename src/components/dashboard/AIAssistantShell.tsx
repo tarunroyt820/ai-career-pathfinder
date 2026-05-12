@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
 import ReactMarkdown from "react-markdown";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -25,6 +25,11 @@ import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 import { askAI, ChatMessage, getHistory, streamAI } from "@/services/aiApi";
+
+type Attachment = {
+  name: string;
+  url: string;
+};
 
 function useAutoResizeTextarea(minHeight: number, maxHeight = 200) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -93,11 +98,19 @@ function TypingDots() {
   );
 }
 
+const readFileAsDataUrl = (file: File) =>
+  new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error(`Failed to read ${file.name}`));
+    reader.readAsDataURL(file);
+  });
+
 export function AIAssistantShell() {
   const STREAMING_ENABLED = false;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
-  const [attachments, setAttachments] = useState<string[]>([]);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
@@ -107,6 +120,7 @@ export function AIAssistantShell() {
   const [activeModel, setActiveModel] = useState("llama-3.1-8b-instant");
   const scrollRef = useRef<HTMLDivElement>(null);
   const commandPaletteRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { textareaRef, adjustHeight } = useAutoResizeTextarea(60, 200);
 
   const loadHistory = async (withToast = false) => {
@@ -155,15 +169,47 @@ export function AIAssistantShell() {
 
   const focusTextarea = () => window.requestAnimationFrame(() => textareaRef.current?.focus());
 
+  const openAttachmentPicker = () => fileInputRef.current?.click();
+
+  const handleAttachmentSelect = async (event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+
+    const imageFiles = files.filter((file) => file.type.startsWith("image/"));
+    if (imageFiles.length === 0) {
+      toast.error("Please choose an image file.");
+      event.target.value = "";
+      return;
+    }
+
+    try {
+      const nextAttachments = await Promise.all(
+        imageFiles.map(async (file) => ({
+          name: file.name,
+          url: await readFileAsDataUrl(file),
+        })),
+      );
+      setAttachments((prev) => [...prev, ...nextAttachments]);
+      toast.success(`${nextAttachments.length} image${nextAttachments.length > 1 ? "s" : ""} attached`);
+    } catch (error) {
+      console.error("Attachment read error:", error);
+      toast.error("Failed to attach image");
+    } finally {
+      event.target.value = "";
+    }
+  };
+
   const handleSend = async () => {
     if (!input.trim() || isLoading || isFetching) return;
     const userMessage = input.trim();
     setMessages((prev) => [...prev, { role: "user", content: userMessage, timestamp: new Date().toISOString() }]);
     setInput("");
+    const imageUrls = attachments.map((item) => item.url);
     setAttachments([]);
     adjustHeight(true);
     setIsLoading(true);
     try {
+      const provider = imageUrls.length > 0 ? "huggingface" : "groq";
       if (STREAMING_ENABLED) {
         const assistantTimestamp = new Date().toISOString();
         setMessages((prev) => [...prev, { role: "assistant", content: "", timestamp: assistantTimestamp }]);
@@ -180,9 +226,9 @@ export function AIAssistantShell() {
               }
               return next;
             });
-          }, { provider: "groq" });
+          }, { provider, imageUrls });
         } catch {
-          const response = await askAI(userMessage, { provider: "groq" });
+          const response = await askAI(userMessage, { provider, imageUrls });
           if (response.modelUsed) {
             setActiveModel(response.modelUsed);
           }
@@ -201,7 +247,7 @@ export function AIAssistantShell() {
           toast.message("Streaming interrupted. Delivered full response instead.");
         }
       } else {
-        const response = await askAI(userMessage, { provider: "groq" });
+        const response = await askAI(userMessage, { provider, imageUrls });
         if (response.modelUsed) {
           setActiveModel(response.modelUsed);
         }
@@ -448,14 +494,22 @@ export function AIAssistantShell() {
                   style={{ overflow: "hidden" }}
                   disabled={isFetching || isLoading}
                 />
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={handleAttachmentSelect}
+                />
               </div>
 
               <AnimatePresence>
                 {attachments.length > 0 && (
                   <motion.div className="flex flex-wrap gap-2 px-4 pb-3" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>
                     {attachments.map((file, index) => (
-                      <motion.div key={`${file}-${index}`} className="flex items-center gap-2 rounded-lg bg-white/[0.03] px-3 py-1.5 text-xs text-white/70" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}>
-                        <span>{file}</span>
+                      <motion.div key={`${file.name}-${index}`} className="flex items-center gap-2 rounded-lg bg-white/[0.03] px-3 py-1.5 text-xs text-white/70" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}>
+                        <span>{file.name}</span>
                         <button type="button" onClick={() => setAttachments((prev) => prev.filter((_, itemIndex) => itemIndex !== index))} className="text-white/40 transition-colors hover:text-white">
                           <XIcon className="h-3 w-3" />
                         </button>
@@ -467,7 +521,7 @@ export function AIAssistantShell() {
 
               <div className="flex items-center justify-between gap-4 border-t border-white/[0.05] p-4">
                 <div className="flex items-center gap-3">
-                  <motion.button type="button" onClick={() => { const file = `attachment-${Math.floor(Math.random() * 1000)}.png`; setAttachments((prev) => [...prev, file]); toast.success(`${file} attached to the prompt`); }} whileTap={{ scale: 0.94 }} className="rounded-lg p-2 text-white/40 transition-colors hover:text-white/90">
+                  <motion.button type="button" onClick={openAttachmentPicker} whileTap={{ scale: 0.94 }} className="rounded-lg p-2 text-white/40 transition-colors hover:text-white/90">
                     <Paperclip className="h-4 w-4" />
                   </motion.button>
                   <motion.button type="button" data-command-button onClick={(event) => { event.stopPropagation(); setShowCommandPalette((current) => !current); focusTextarea(); }} whileTap={{ scale: 0.94 }} className={cn("rounded-lg p-2 text-white/40 transition-colors hover:text-white/90", showCommandPalette && "bg-white/10 text-white/90")}>

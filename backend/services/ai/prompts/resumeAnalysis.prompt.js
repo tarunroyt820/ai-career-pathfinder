@@ -5,6 +5,7 @@ Required JSON shape:
 {
   "scores": { "atsCompatibility": 0, "contentStrength": 0, "overallScore": 0 },
   "summary": "",
+  "overallEvaluation": "",
   "strengths": [],
   "weaknesses": [],
   "sections": [
@@ -17,10 +18,27 @@ Required JSON shape:
     }
   ],
   "keywords": { "present": [], "missing": [], "density": 0, "recommendations": [] },
+  "impactReview": {
+    "metricsUsed": "",
+    "weakStatements": [],
+    "improvedExamples": []
+  },
   "formatting": {
     "issues": [
       { "type": "", "severity": "critical|warning|info", "description": "", "fix": "" }
     ]
+  },
+  "technicalSkills": {
+    "detected": [],
+    "skillLevel": "",
+    "missing": [],
+    "suggestions": []
+  },
+  "jobRoleMatching": {
+    "bestFitRole": "",
+    "matchLevel": "Low|Medium|High",
+    "gaps": [],
+    "suggestions": []
   },
   "improvements": [
     {
@@ -33,7 +51,8 @@ Required JSON shape:
   ],
   "actionPlan": [],
   "estimatedATSPassRate": "",
-  "estimatedATSPassRateAfterFixes": ""
+  "estimatedATSPassRateAfterFixes": "",
+  "finalInsight": ""
 }
 
 Rules:

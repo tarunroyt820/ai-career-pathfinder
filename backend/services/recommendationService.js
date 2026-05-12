@@ -1,5 +1,8 @@
 const aiService = require('./ai/ai.service');
 const { CAREER_PLAN_SYSTEM_PROMPT } = require('./ai/prompts/careerPlan.prompt');
+const { getProvider } = require('../utils/providerRouter');
+
+const CAREER_PATH_MAX_TOKENS = Number(process.env.CAREER_PATH_MAX_TOKENS || 2048);
 
 /**
  * Fallback rule-based milestones when AI fails or returns invalid JSON.
@@ -61,21 +64,24 @@ async function generateMilestones(targetRole, userProfile = {}, existingSkills =
 
   try {
     // Build the user prompt with provided information
-    const userPrompt = `
-Generate 5 actionable milestones for someone targeting the role of: ${targetRole}
-
-User Profile:
-- Current Skills: ${existingSkills.join(', ') || 'Not specified'}
-- Experience: ${userProfile.experience || 'Not provided'}
-- Resume Summary: ${userProfile.resume ? userProfile.resume.substring(0, 200) : 'Not provided'}
-
-Return ONLY valid JSON array, no markdown or explanation. Format exactly as specified.
-`;
+    const userPrompt = [
+      `Generate 5 actionable milestones for: ${targetRole}`,
+      `Skills: ${existingSkills.slice(0, 8).join(', ') || 'Not specified'}`,
+      `Experience: ${userProfile.experience || 'Not provided'}`,
+      `Resume summary: ${String(userProfile.resume || 'Not provided').slice(0, 120)}`,
+      'Return ONLY valid JSON array. Keep each milestone concise and practical.'
+    ].join('\n');
 
     console.log(`[RECOMMENDATION SERVICE] Generating milestones for ${targetRole}...`);
 
     // Call AI with the career plan system prompt
-    const aiResponse = await aiService.generate(userPrompt, process.env.AI_PROVIDER);
+    const preferredProvider = (process.env.CAREER_PATH_PROVIDER || '').toLowerCase();
+    const { provider, model } = getProvider('career path roadmap generation', preferredProvider);
+    const aiResponse = await aiService.generate(userPrompt, {
+      provider,
+      model,
+      maxTokens: CAREER_PATH_MAX_TOKENS,
+    });
 
     console.log(`[RECOMMENDATION SERVICE] AI call completed in ${Date.now() - startTime}ms`);
 
@@ -138,29 +144,22 @@ async function generateRecommendations(plan, userProfile = {}) {
   const startTime = Date.now();
 
   try {
-    const userPrompt = `
-Analyze the career transition to: ${plan.targetRole}
-
-Current milestones: ${plan.milestones.map((m) => m.title).join(', ') || 'None yet'}
-
-Provide:
-1. Key skill gaps (array with skill name, current level, required level)
-2. Recommended resources (courses, articles, projects)
-3. Industry insights for the role
-4. Timeline realistic for someone with: ${userProfile.experience || 'not specified'}
-
-Return ONLY valid JSON with this shape:
-{
-  "skillGaps": [{ "skill": "", "currentLevel": "", "requiredLevel": "", "recommendation": "" }],
-  "resources": [{ "type": "course|article|book|repo", "title": "", "url": "", "rationale": "" }],
-  "insights": { "marketDemand": "", "salaryRange": "", "growthOpportunities": "" },
-  "timelineAssessment": ""
-}
-`;
+    const userPrompt = [
+      `Analyze the career transition to: ${plan.targetRole}`,
+      `Milestones: ${plan.milestones.slice(0, 5).map((m) => m.title).join(', ') || 'None yet'}`,
+      `Experience: ${userProfile.experience || 'not specified'}`,
+      'Return ONLY valid JSON with skillGaps, resources, insights, and timelineAssessment.',
+    ].join('\n');
 
     console.log(`[RECOMMENDATION SERVICE] Generating recommendations for ${plan.targetRole}...`);
 
-    const aiResponse = await aiService.generate(userPrompt, process.env.AI_PROVIDER);
+    const preferredProvider = (process.env.CAREER_PATH_PROVIDER || '').toLowerCase();
+    const { provider, model } = getProvider('career path roadmap generation', preferredProvider);
+    const aiResponse = await aiService.generate(userPrompt, {
+      provider,
+      model,
+      maxTokens: CAREER_PATH_MAX_TOKENS,
+    });
 
     console.log(`[RECOMMENDATION SERVICE] Recommendations call completed in ${Date.now() - startTime}ms`);
 

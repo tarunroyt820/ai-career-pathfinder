@@ -18,6 +18,13 @@ const protect = async (req, res, next) => {
             return res.status(401).json({ error: unauthorizedMessage, message: unauthorizedMessage });
         }
 
+        if (user.isSuspended) {
+            return res.status(403).json({
+                error: 'Your account has been suspended by admin.',
+                message: 'Your account has been suspended by admin.'
+            });
+        }
+
         req.user = user;
         return next();
     } catch (error) {
