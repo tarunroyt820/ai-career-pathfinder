@@ -18,6 +18,12 @@ router.post("/ask", protect, aiRateLimiter, aiController.askAI);
 router.post("/chat/stream", protect, aiRateLimiter, aiController.streamChat);
 router.get("/history", protect, aiRateLimiter, aiController.getHistory);
 
+// Generate a full structured career plan (returns saved plan)
+router.post("/generate-career-plan", protect, aiRateLimiter, aiController.generateCareerPlan);
+
+// Job status endpoint for async AI jobs
+router.get("/jobs/:jobId", protect, aiRateLimiter, aiController.getJobStatus);
+
 // TEST ROUTE — no auth needed
 router.get("/test", async (req, res) => {
     try {

@@ -79,7 +79,17 @@ export function useCreatePlan() {
 
   return useMutation({
     mutationFn: (data: CreatePlanRequest) => createPlan(data),
-    onSuccess: () => {
+    onSuccess: (createdPlan) => {
+      if (createdPlan._id) {
+        queryClient.setQueryData(
+          CAREER_PLAN_KEYS.detail(createdPlan._id),
+          createdPlan
+        );
+        queryClient.invalidateQueries({
+          queryKey: CAREER_PLAN_KEYS.detail(createdPlan._id),
+        });
+      }
+
       // Invalidate the plans list so it refetches
       queryClient.invalidateQueries({
         queryKey: CAREER_PLAN_KEYS.lists(),

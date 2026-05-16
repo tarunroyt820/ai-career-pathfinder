@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/common/Button";
 import { Compass, Target, Map, Sparkles, Plus, Clock, CheckCircle2, AlertCircle } from "lucide-react";
 import { ProgressBar } from "@/components/common/ProgressBar";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CareerPlan } from "@/types/careerPlan";
 import { toast } from "sonner";
 import {
@@ -40,7 +40,11 @@ function SkeletonCard() {
 /**
  * Create Plan Modal
  */
-function CreatePlanModal() {
+function CreatePlanModal({
+  onCreated,
+}: {
+  onCreated: (plan: CareerPlan) => void;
+}) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [targetRole, setTargetRole] = useState("");
@@ -58,14 +62,19 @@ function CreatePlanModal() {
     }
 
     try {
-      await createMutation.mutateAsync({
+      const createdPlan = await createMutation.mutateAsync({
         title,
         targetRole,
         timeframe,
         intensity,
       });
 
-      toast.success("Career plan created! AI is generating recommendations...");
+      onCreated(createdPlan);
+      if (createdPlan.aiJobId && !createdPlan.aiReady) {
+        toast.success(`Career plan queued (job ${createdPlan.aiJobId}). AI will update when ready.`);
+      } else {
+        toast.success("Career plan created! AI is generating recommendations...");
+      }
       setTitle("");
       setTargetRole("");
       setTimeframe("");
@@ -153,6 +162,17 @@ function PlanCard({ plan, onClick }: { plan: CareerPlan; onClick: () => void }) 
     COMPLETED: <CheckCircle2 className="h-4 w-4" />,
   };
 
+  const queuedBadge = (plan: CareerPlan) => {
+    if (plan.aiJobId && !plan.aiReady) {
+      return (
+        <span className="text-xs font-semibold px-2 py-1 rounded-full bg-indigo-100 text-indigo-700">
+          Queued
+        </span>
+      );
+    }
+    return null;
+  };
+
   const milestonesCompleted = plan.milestones.filter((m) => m.completed).length;
   const totalMilestones = plan.milestones.length;
 
@@ -163,13 +183,16 @@ function PlanCard({ plan, onClick }: { plan: CareerPlan; onClick: () => void }) 
           <div className="bg-primary/10 p-2 rounded-xl">
             <Target className="h-5 w-5 text-primary" />
           </div>
-          <span
-            className={`text-xs font-semibold px-2 py-1 rounded-full flex items-center gap-1 ${
-              statusColors[plan.status] || statusColors.ACTIVE
-            }`}
-          >
-            {statusIcons[plan.status]} {plan.status}
-          </span>
+          <div className="flex items-center gap-2">
+            {queuedBadge(plan)}
+            <span
+              className={`text-xs font-semibold px-2 py-1 rounded-full flex items-center gap-1 ${
+                statusColors[plan.status] || statusColors.ACTIVE
+              }`}
+            >
+              {statusIcons[plan.status]} {plan.status}
+            </span>
+          </div>
         </div>
         <CardTitle className="mt-4">{plan.title}</CardTitle>
         <CardDescription>{plan.targetRole}</CardDescription>
@@ -206,6 +229,15 @@ export function CareerPathShell() {
   const [selectedPlanId, setSelectedPlanId] = useState<string | undefined>();
   const plansQuery = useGetPlans();
   const selectedPlanQuery = useGetPlan(selectedPlanId);
+  const plans = plansQuery.data || [];
+  const hasPlans = plans.length > 0;
+  const selectedPlan = selectedPlanQuery.data;
+
+  useEffect(() => {
+    if (!selectedPlanId && plans[0]?._id) {
+      setSelectedPlanId(plans[0]._id);
+    }
+  }, [plans, selectedPlanId]);
 
   // Show loading skeleton while fetching plans
   if (plansQuery.isLoading) {
@@ -222,9 +254,18 @@ export function CareerPathShell() {
     );
   }
 
-  const plans = plansQuery.data || [];
-  const hasPlans = plans.length > 0;
-  const selectedPlan = selectedPlanQuery.data;
+  if (plansQuery.isError) {
+    return (
+      <Card className="rounded-3xl border-border/50 p-8">
+        <CardTitle className="text-lg">Career Plans Failed To Load</CardTitle>
+        <CardDescription className="mt-2">
+          {plansQuery.error instanceof Error
+            ? plansQuery.error.message
+            : "We could not load your career plans right now."}
+        </CardDescription>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -243,7 +284,9 @@ export function CareerPathShell() {
               Assessment
             </Button>
           )}
-          <CreatePlanModal />
+          <CreatePlanModal
+            onCreated={(plan) => setSelectedPlanId(plan._id)}
+          />
         </div>
       </div>
 
@@ -263,7 +306,9 @@ export function CareerPathShell() {
                 and a personalized roadmap.
               </p>
             </div>
-            <CreatePlanModal />
+            <CreatePlanModal
+              onCreated={(plan) => setSelectedPlanId(plan._id)}
+            />
           </div>
         </Card>
       ) : (
@@ -310,9 +355,14 @@ export function CareerPathShell() {
                     {!selectedPlan.aiReady && (
                       <div className="flex items-start gap-2 p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
                         <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-300 mt-0.5 flex-shrink-0" />
-                        <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                          AI is generating your milestones. This may take a few moments...
-                        </p>
+                        <div>
+                          <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                            AI is generating your milestones. This may take a few moments...
+                          </p>
+                          {selectedPlan.aiJobId && (
+                            <p className="text-xs text-muted-foreground mt-1">Queue job: {selectedPlan.aiJobId}</p>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -330,8 +380,45 @@ export function CareerPathShell() {
                 <PlanTimeline
                   planId={selectedPlan._id || ""}
                   milestones={selectedPlan.milestones}
+                  roadmap={selectedPlan.roadmap}
                 />
               </div>
+
+              <Card className="rounded-3xl border-border/50">
+                <CardHeader>
+                  <CardTitle>Roadmap In Text</CardTitle>
+                  <CardDescription>
+                    A readable step-by-step path from your starting point to your destination.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {selectedPlan.roadmap?.nodes?.length ? (
+                    <div className="space-y-3">
+                      {selectedPlan.roadmap.nodes
+                        .slice()
+                        .sort((a, b) => a.order - b.order)
+                        .map((node, index) => (
+                          <div
+                            key={node.nodeId}
+                            className="rounded-2xl border border-border/40 bg-card/40 p-4"
+                          >
+                            <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+                              Step {index + 1} · {node.type}
+                            </p>
+                            <p className="mt-1 text-base font-semibold">{node.label}</p>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                              {node.description || "Continue through this stage on your roadmap."}
+                            </p>
+                          </div>
+                        ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Your roadmap text will appear here once milestones are available.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
 
               {/* AI Recommendations */}
               {selectedPlan.aiReady && (

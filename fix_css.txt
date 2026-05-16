@@ -1,0 +1,3 @@
+DELETE LINE 642: }
+This extra closing brace is causing "Unexpected }" error during build.
+The @layer utilities block should close after the neon media queries, not before.

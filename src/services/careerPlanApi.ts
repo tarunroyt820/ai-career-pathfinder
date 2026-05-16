@@ -1,6 +1,7 @@
 import axios from "./http";
 import {
   CareerPlan,
+  CareerRoadmap,
   CreatePlanRequest,
   UpdatePlanRequest,
   CompleteMilestoneRequest,
@@ -9,17 +10,79 @@ import {
 
 const API_URL = `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/career-plans`;
 
+const normalizePlanCollections = (plan: CareerPlan): CareerPlan => ({
+  ...plan,
+  milestones: Array.isArray(plan.milestones) ? plan.milestones : [],
+  recommendations: Array.isArray(plan.recommendations) ? plan.recommendations : [],
+});
+
+const buildRoadmapFromMilestones = (plan: CareerPlan): CareerRoadmap => {
+  const milestones = Array.isArray(plan.milestones) ? plan.milestones : [];
+  const startNodeId = `start-${plan._id || "career"}`;
+  const destinationNodeId = `destination-${plan._id || "career"}`;
+  const roadmapNodes = milestones.map((milestone, index) => ({
+    nodeId: milestone._id || `milestone-${index + 1}`,
+    label: milestone.title,
+    type: index === milestones.length - 1 ? "specialization" as const : "milestone" as const,
+    description: milestone.notes,
+    estimateHours: milestone.estimateHours,
+    priority: milestone.priority,
+    order: index + 1,
+    milestoneId: milestone._id || null,
+  }));
+
+  const nodes = [
+    {
+      nodeId: startNodeId,
+      label: roadmapNodes[0]?.label || `Start ${plan.targetRole}`,
+      type: "start" as const,
+      description: `Starting point for ${plan.targetRole}`,
+      estimateHours: roadmapNodes[0]?.estimateHours || 0,
+      priority: "HIGH" as const,
+      order: 0,
+      milestoneId: roadmapNodes[0]?.milestoneId || null,
+    },
+    ...roadmapNodes,
+    {
+      nodeId: destinationNodeId,
+      label: plan.targetRole,
+      type: "destination" as const,
+      description: `Target destination: ${plan.targetRole}`,
+      estimateHours: 0,
+      priority: "HIGH" as const,
+      order: roadmapNodes.length + 1,
+      milestoneId: null,
+    },
+  ];
+
+  const edges = nodes.slice(0, -1).map((node, index) => ({
+    from: node.nodeId,
+    to: nodes[index + 1].nodeId,
+    label: index === nodes.length - 2 ? "Launch" : "Next step",
+  }));
+
+  return {
+    title: `${plan.targetRole} Roadmap`,
+    startNodeId,
+    endNodeId: destinationNodeId,
+    nodes,
+    edges,
+  };
+};
+
 const adaptCareerPlan = (plan: CareerPlan): CareerPlan => {
-  const recommendedSkills = plan.milestones
+  const normalizedPlan = normalizePlanCollections(plan);
+
+  const recommendedSkills = normalizedPlan.milestones
     .filter((milestone) => milestone.type === "skill")
     .map((milestone) => milestone.title);
 
-  const weeklyTasks = plan.milestones
+  const weeklyTasks = normalizedPlan.milestones
     .filter((milestone) => !milestone.completed)
     .slice(0, 5)
     .map((milestone) => milestone.title);
 
-  const skillGapAnalysis = plan.recommendations
+  const skillGapAnalysis = normalizedPlan.recommendations
     .filter((recommendation) =>
       recommendation.type?.toUpperCase().includes("SKILL_GAP")
     )
@@ -33,8 +96,11 @@ const adaptCareerPlan = (plan: CareerPlan): CareerPlan => {
     });
 
   return {
-    ...plan,
-    careerGoal: plan.targetRole,
+    ...normalizedPlan,
+    careerGoal: normalizedPlan.targetRole,
+    roadmap: normalizedPlan.roadmap && normalizedPlan.roadmap.nodes?.length > 0
+      ? normalizedPlan.roadmap
+      : buildRoadmapFromMilestones(normalizedPlan),
     recommendedSkills,
     weeklyTasks,
     skillGapAnalysis,

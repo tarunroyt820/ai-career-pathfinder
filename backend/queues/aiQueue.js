@@ -149,11 +149,26 @@ async function processGenerateMilestones(data) {
     userProfile,
     []
   );
+  const roadmap = recommendationService.buildRoadmapFromMilestones(
+    targetRole,
+    milestones
+  );
+  const recommendations = await recommendationService.generateRecommendations(
+    {
+      ...plan.toObject(),
+      milestones,
+      roadmap,
+    },
+    userProfile
+  );
 
   // Update plan with generated milestones
   plan.milestones = milestones;
+  plan.roadmap = roadmap;
+  plan.recommendations = recommendations;
   plan.aiReady = true;
   plan.aiGeneratedAt = new Date();
+  plan.aiLastRefreshAt = new Date();
 
   await plan.save();
 
@@ -219,8 +234,24 @@ async function queueGenerateMilestones(planId, userId, targetRole, userProfile =
         userProfile,
         []
       );
+      const roadmap = recommendationService.buildRoadmapFromMilestones(
+        targetRole,
+        milestones
+      );
+      const recommendations = await recommendationService.generateRecommendations(
+        {
+          ...plan.toObject(),
+          milestones,
+          roadmap,
+        },
+        userProfile
+      );
       plan.milestones = milestones;
+      plan.roadmap = roadmap;
+      plan.recommendations = recommendations;
       plan.aiReady = true;
+      plan.aiGeneratedAt = new Date();
+      plan.aiLastRefreshAt = new Date();
       await plan.save();
     }
     return { queued: false, processed: true };

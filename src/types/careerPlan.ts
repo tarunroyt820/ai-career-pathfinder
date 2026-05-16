@@ -28,6 +28,31 @@ export interface Recommendation {
   createdAt?: string; // ISO date
 }
 
+export interface RoadmapNode {
+  nodeId: string;
+  label: string;
+  type: "start" | "milestone" | "specialization" | "destination";
+  description?: string;
+  estimateHours?: number;
+  priority?: "LOW" | "MEDIUM" | "HIGH";
+  order: number;
+  milestoneId?: string | null;
+}
+
+export interface RoadmapEdge {
+  from: string;
+  to: string;
+  label?: string;
+}
+
+export interface CareerRoadmap {
+  title: string;
+  startNodeId: string;
+  endNodeId: string;
+  nodes: RoadmapNode[];
+  edges: RoadmapEdge[];
+}
+
 /**
  * CareerPlan represents a user's personalized career development roadmap
  */
@@ -40,6 +65,7 @@ export interface CareerPlan {
   status: 'ACTIVE' | 'PAUSED' | 'COMPLETED';
   overallProgress: number; // 0-100 percentage
   milestones: Milestone[];
+  roadmap?: CareerRoadmap | null;
   recommendations: Recommendation[];
   recommendedSkills?: string[];
   weeklyTasks?: string[];
@@ -50,6 +76,9 @@ export interface CareerPlan {
   __v?: number; // Version key for optimistic locking
   aiReady?: boolean; // True when AI has generated initial milestones
   aiGeneratedAt?: string; // ISO date when AI last ran
+  aiLastRefreshAt?: string; // ISO date when AI recommendations were last refreshed
+  aiJobId?: string | null; // Optional job id for queued AI generation
+  aiLastRefreshJobId?: string | null; // Optional job id for queued refresh
 }
 
 /**

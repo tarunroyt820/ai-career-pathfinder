@@ -4,6 +4,132 @@ const { getProvider } = require('../utils/providerRouter');
 
 const CAREER_PATH_MAX_TOKENS = Number(process.env.CAREER_PATH_MAX_TOKENS || 2048);
 
+function slugifyNodeId(value, fallback = 'node') {
+  return String(value || fallback)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    || fallback;
+}
+
+function buildRoadmapFromMilestones(targetRole, milestones = []) {
+  const startNodeId = `start-${slugifyNodeId(targetRole, 'career')}`;
+  const destinationNodeId = `destination-${slugifyNodeId(targetRole, 'career')}`;
+  const nodes = [
+    {
+      nodeId: startNodeId,
+      label: milestones[0]?.title || `Start ${targetRole}`,
+      type: 'start',
+      description: `Your starting point for becoming a ${targetRole}.`,
+      estimateHours: milestones[0]?.estimateHours || 0,
+      priority: 'HIGH',
+      order: 0,
+      milestoneId: milestones[0]?._id ? String(milestones[0]._id) : null,
+    },
+  ];
+
+  const roadmapMilestones = milestones.map((milestone, index) => ({
+    nodeId: `milestone-${slugifyNodeId(milestone.title, `step-${index + 1}`)}`,
+    label: milestone.title,
+    type: index === milestones.length - 1 ? 'specialization' : 'milestone',
+    description: milestone.notes || `Build ${milestone.title} on your way to ${targetRole}.`,
+    estimateHours: milestone.estimateHours || 0,
+    priority: milestone.priority || 'MEDIUM',
+    order: index + 1,
+    milestoneId: milestone._id ? String(milestone._id) : null,
+  }));
+
+  nodes.push(...roadmapMilestones);
+  nodes.push({
+    nodeId: destinationNodeId,
+    label: targetRole,
+    type: 'destination',
+    description: `End destination: become job-ready for ${targetRole}.`,
+    estimateHours: 0,
+    priority: 'HIGH',
+    order: roadmapMilestones.length + 1,
+    milestoneId: null,
+  });
+
+  const edges = [];
+  for (let index = 0; index < nodes.length - 1; index += 1) {
+    edges.push({
+      from: nodes[index].nodeId,
+      to: nodes[index + 1].nodeId,
+      label: index === nodes.length - 2 ? 'Launch' : 'Next step',
+    });
+  }
+
+  return {
+    title: `${targetRole} Roadmap`,
+    startNodeId,
+    endNodeId: destinationNodeId,
+    nodes,
+    edges,
+  };
+}
+
+function getTemplateMilestones(targetRole) {
+  const roleLower = String(targetRole || '').toLowerCase();
+  const now = Date.now();
+  const makeMilestone = (title, index, type = 'skill', estimateHours = 24, priority = 'MEDIUM', notes = '') => ({
+    title,
+    type,
+    estimateHours,
+    priority,
+    dueDate: new Date(now + (index + 1) * 21 * 24 * 60 * 60 * 1000).toISOString(),
+    completed: false,
+    evidence: [],
+    notes,
+    source: 'RULE',
+  });
+
+  if (
+    roleLower.includes('web') ||
+    roleLower.includes('frontend') ||
+    roleLower.includes('front end') ||
+    roleLower.includes('full stack') ||
+    roleLower.includes('fullstack')
+  ) {
+    return [
+      makeMilestone('HTML', 0, 'skill', 18, 'HIGH', 'Learn page structure, semantic tags, and accessibility basics.'),
+      makeMilestone('CSS', 1, 'skill', 24, 'HIGH', 'Build layouts, responsive design, and visual polish.'),
+      makeMilestone('JavaScript', 2, 'skill', 40, 'HIGH', 'Understand logic, DOM manipulation, and async behavior.'),
+      makeMilestone('Tailwind CSS', 3, 'skill', 16, 'MEDIUM', 'Speed up styling workflows with utility-first CSS.'),
+      makeMilestone('React', 4, 'skill', 42, 'HIGH', 'Build component-driven user interfaces and stateful apps.'),
+      makeMilestone('Node.js', 5, 'skill', 28, 'HIGH', 'Learn server-side JavaScript fundamentals.'),
+      makeMilestone('Express', 6, 'skill', 24, 'HIGH', 'Build APIs, middleware, and backend routing.'),
+      makeMilestone('Full Stack Portfolio Project', 7, 'project', 60, 'HIGH', 'Combine frontend and backend into one deployable app.'),
+    ];
+  }
+
+  if (roleLower.includes('management') || roleLower.includes('manager') || roleLower.includes('leadership')) {
+    return [
+      makeMilestone('Communication Fundamentals', 0, 'skill', 18, 'HIGH', 'Practice clear written, verbal, and stakeholder communication.'),
+      makeMilestone('Task Ownership', 1, 'skill', 20, 'HIGH', 'Learn how to own delivery, priorities, and follow-through.'),
+      makeMilestone('Planning and Delegation', 2, 'skill', 24, 'HIGH', 'Break work into phases and assign responsibilities.'),
+      makeMilestone('Conflict Resolution', 3, 'skill', 16, 'MEDIUM', 'Handle disagreements with calm structure and empathy.'),
+      makeMilestone('Team Coordination', 4, 'skill', 22, 'HIGH', 'Run meetings, updates, and cross-functional alignment.'),
+      makeMilestone('Performance Feedback', 5, 'skill', 16, 'MEDIUM', 'Deliver useful feedback and coaching.'),
+      makeMilestone('Project Leadership Simulation', 6, 'project', 36, 'HIGH', 'Lead a real or simulated project from kickoff to review.'),
+    ];
+  }
+
+  if (roleLower.includes('video') || roleLower.includes('editor') || roleLower.includes('editing')) {
+    return [
+      makeMilestone('Editing Basics', 0, 'skill', 16, 'HIGH', 'Learn cuts, trims, pacing, and project organization.'),
+      makeMilestone('Timeline Workflow', 1, 'skill', 18, 'HIGH', 'Master bins, sequences, proxies, and timeline efficiency.'),
+      makeMilestone('Transitions and Story Rhythm', 2, 'skill', 20, 'HIGH', 'Use transitions intentionally to support storytelling.'),
+      makeMilestone('Audio Cleanup', 3, 'skill', 16, 'MEDIUM', 'Balance dialogue, music, and effects for clarity.'),
+      makeMilestone('Color Correction', 4, 'skill', 22, 'HIGH', 'Improve consistency, mood, and professional finish.'),
+      makeMilestone('Motion Graphics Basics', 5, 'skill', 24, 'MEDIUM', 'Add titles, overlays, and motion support where helpful.'),
+      makeMilestone('Client-ready Edit', 6, 'project', 40, 'HIGH', 'Produce a polished piece from raw footage to final delivery.'),
+    ];
+  }
+
+  return null;
+}
+
 /**
  * Fallback rule-based milestones when AI fails or returns invalid JSON.
  * Used as a safe default to ensure users always get recommendations.
@@ -11,10 +137,12 @@ const CAREER_PATH_MAX_TOKENS = Number(process.env.CAREER_PATH_MAX_TOKENS || 2048
  * @returns {array} Array of milestone objects
  */
 function getFallbackMilestones(targetRole) {
-  const roleLower = (targetRole || '').toLowerCase();
+  const templateMilestones = getTemplateMilestones(targetRole);
+  if (templateMilestones) {
+    return templateMilestones;
+  }
 
-  // Generic milestones for any role
-  const genericMilestones = [
+  return [
     {
       title: `Learn fundamentals of ${targetRole}`,
       type: 'skill',
@@ -43,8 +171,53 @@ function getFallbackMilestones(targetRole) {
       source: 'RULE',
     },
   ];
+}
 
-  return genericMilestones;
+function getFallbackRecommendations(plan) {
+  const targetRole = plan?.targetRole || 'your target role';
+  const primarySkillMilestones = (plan?.milestones || [])
+    .filter((milestone) => milestone.type === 'skill')
+    .slice(0, 3);
+
+  const skillGapRecommendations = primarySkillMilestones.map((milestone) => ({
+    source: 'RULE',
+    type: 'SKILL_GAP',
+    payload: {
+      skill: milestone.title,
+      currentLevel: 'Developing',
+      requiredLevel: 'Job-ready',
+      recommendation: `Prioritize focused practice on ${milestone.title} to move closer to ${targetRole}.`,
+    },
+    confidence: 0.7,
+    modelVersion: 'fallback-rule',
+  }));
+
+  const resourceRecommendations = primarySkillMilestones.map((milestone) => ({
+    source: 'RULE',
+    type: 'RESOURCE',
+    payload: {
+      type: 'course',
+      title: `Learning resource for ${milestone.title}`,
+      url: '',
+      rationale: `Choose a practical course or project-based resource that helps you build ${milestone.title}.`,
+    },
+    confidence: 0.65,
+    modelVersion: 'fallback-rule',
+  }));
+
+  const marketInsight = {
+    source: 'RULE',
+    type: 'MARKET_INSIGHT',
+    payload: {
+      marketDemand: `${targetRole} roles typically reward demonstrable projects and recent hands-on work.`,
+      growthOpportunities: 'Strengthen portfolio evidence, core skills, and interview-ready examples.',
+      timelineAssessment: 'A consistent weekly practice schedule usually improves progress visibility fastest.',
+    },
+    confidence: 0.6,
+    modelVersion: 'fallback-rule',
+  };
+
+  return [...skillGapRecommendations, ...resourceRecommendations, marketInsight];
 }
 
 /**
@@ -65,19 +238,21 @@ async function generateMilestones(targetRole, userProfile = {}, existingSkills =
   try {
     // Build the user prompt with provided information
     const userPrompt = [
-      `Generate 5 actionable milestones for: ${targetRole}`,
+      `Generate 6-8 sequenced roadmap milestones for: ${targetRole}`,
       `Skills: ${existingSkills.slice(0, 8).join(', ') || 'Not specified'}`,
       `Experience: ${userProfile.experience || 'Not provided'}`,
       `Resume summary: ${String(userProfile.resume || 'Not provided').slice(0, 120)}`,
+      'Order the milestones from starting point to destination. Use concrete stage names, not vague titles.',
       'Return ONLY valid JSON array. Keep each milestone concise and practical.'
     ].join('\n');
+    const prompt = [CAREER_PLAN_SYSTEM_PROMPT, userPrompt].join('\n\n');
 
     console.log(`[RECOMMENDATION SERVICE] Generating milestones for ${targetRole}...`);
 
     // Call AI with the career plan system prompt
     const preferredProvider = (process.env.CAREER_PATH_PROVIDER || '').toLowerCase();
     const { provider, model } = getProvider('career path roadmap generation', preferredProvider);
-    const aiResponse = await aiService.generate(userPrompt, {
+    const aiResponse = await aiService.generate(prompt, {
       provider,
       model,
       maxTokens: CAREER_PATH_MAX_TOKENS,
@@ -145,10 +320,11 @@ async function generateRecommendations(plan, userProfile = {}) {
 
   try {
     const userPrompt = [
+      CAREER_PLAN_SYSTEM_PROMPT,
       `Analyze the career transition to: ${plan.targetRole}`,
       `Milestones: ${plan.milestones.slice(0, 5).map((m) => m.title).join(', ') || 'None yet'}`,
       `Experience: ${userProfile.experience || 'not specified'}`,
-      'Return ONLY valid JSON with skillGaps, resources, insights, and timelineAssessment.',
+      'Return ONLY valid JSON with skillGaps, recommendedResources, summary, insights, and timelineAssessment.',
     ].join('\n');
 
     console.log(`[RECOMMENDATION SERVICE] Generating recommendations for ${plan.targetRole}...`);
@@ -176,7 +352,7 @@ async function generateRecommendations(plan, userProfile = {}) {
       console.warn(
         `[RECOMMENDATION SERVICE] Failed to parse recommendations: ${parseErr.message}`
       );
-      return [];
+      return getFallbackRecommendations(plan);
     }
 
     // Transform into Recommendation schema format
@@ -188,7 +364,13 @@ async function generateRecommendations(plan, userProfile = {}) {
         ...recommendations.skillGaps.map((sg) => ({
           source: 'AI',
           type: 'SKILL_GAP',
-          payload: sg,
+          payload: {
+            skill: sg.skill || sg.title || 'Skill Gap',
+            currentLevel: sg.currentLevel || sg.current || sg.level || 'Current level not specified',
+            requiredLevel: sg.requiredLevel || sg.required || 'Required level not specified',
+            recommendation:
+              sg.recommendation || sg.reason || sg.summary || 'Focus on deliberate practice and project work.',
+          },
           confidence: 0.85,
           modelVersion: aiResponse.modelUsed,
         }))
@@ -196,12 +378,23 @@ async function generateRecommendations(plan, userProfile = {}) {
     }
 
     // Add resources
-    if (Array.isArray(recommendations.resources)) {
+    const resources = Array.isArray(recommendations.resources)
+      ? recommendations.resources
+      : Array.isArray(recommendations.recommendedResources)
+        ? recommendations.recommendedResources
+        : [];
+
+    if (resources.length > 0) {
       recommendationDocs.push(
-        ...recommendations.resources.map((r) => ({
+        ...resources.map((r) => ({
           source: 'AI',
           type: 'RESOURCE',
-          payload: r,
+          payload: {
+            type: r.type || 'resource',
+            title: r.title || r.name || 'Recommended resource',
+            url: r.url || '',
+            rationale: r.rationale || r.reason || r.description || 'Selected to support your next milestone.',
+          },
           confidence: 0.8,
           modelVersion: aiResponse.modelUsed,
         }))
@@ -209,21 +402,36 @@ async function generateRecommendations(plan, userProfile = {}) {
     }
 
     // Add insights
-    if (recommendations.insights) {
+    if (recommendations.insights || recommendations.summary || recommendations.timelineAssessment) {
       recommendationDocs.push({
         source: 'AI',
         type: 'MARKET_INSIGHT',
-        payload: recommendations.insights,
+        payload: {
+          ...(typeof recommendations.insights === 'object' && recommendations.insights
+            ? recommendations.insights
+            : {}),
+          summary:
+            typeof recommendations.summary === 'string' ? recommendations.summary : undefined,
+          timelineAssessment:
+            typeof recommendations.timelineAssessment === 'string'
+              ? recommendations.timelineAssessment
+              : undefined,
+        },
         confidence: 0.75,
         modelVersion: aiResponse.modelUsed,
       });
+    }
+
+    if (recommendationDocs.length === 0) {
+      console.warn('[RECOMMENDATION SERVICE] Recommendation response was empty after normalization. Using fallback.');
+      return getFallbackRecommendations(plan);
     }
 
     console.log(`[RECOMMENDATION SERVICE] Generated ${recommendationDocs.length} recommendations`);
     return recommendationDocs;
   } catch (err) {
     console.error(`[RECOMMENDATION SERVICE] Error generating recommendations: ${err.message}`);
-    return [];
+    return getFallbackRecommendations(plan);
   }
 }
 
@@ -244,13 +452,25 @@ async function refreshPlanAI(plan, userProfile = {}) {
 
     // Generate new milestones and recommendations
     const milestones = await generateMilestones(plan.targetRole, userProfile, []);
-    const recommendations = await generateRecommendations(plan, userProfile);
+    const roadmap = buildRoadmapFromMilestones(plan.targetRole, milestones);
+    const recommendations = await generateRecommendations(
+      {
+        ...plan.toObject(),
+        milestones,
+        roadmap,
+      },
+      userProfile
+    );
 
     // Update plan
     plan.milestones = milestones;
+    plan.roadmap = roadmap;
     plan.recommendations = recommendations;
     plan.aiReady = true;
     plan.aiLastRefreshAt = new Date();
+    if (!plan.aiGeneratedAt) {
+      plan.aiGeneratedAt = new Date();
+    }
 
     await plan.save();
 
@@ -267,4 +487,6 @@ module.exports = {
   generateRecommendations,
   refreshPlanAI,
   getFallbackMilestones,
+  getFallbackRecommendations,
+  buildRoadmapFromMilestones,
 };

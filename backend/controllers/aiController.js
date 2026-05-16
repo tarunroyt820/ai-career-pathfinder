@@ -1,10 +1,12 @@
-﻿const User = require('../models/User');
+const User = require('../models/User');
 const Message = require('../models/Message');
 const CareerPlan = require('../models/CareerPlan');
 const AIRequestLog = require('../models/AIRequestLog');
 const aiService = require('../services/ai/ai.service');
 const profileCache = require('../utils/profileCache');
 const { getProvider } = require('../utils/providerRouter');
+const { CAREER_PLAN_SYSTEM_PROMPT } = require('../services/ai/prompts/careerPlan.prompt');
+const { getJobStatus } = require('../queues/aiQueue');
 
 const timer = (label) => {
     const start = Date.now();
@@ -196,9 +198,11 @@ exports.askAI = async (req, res) => {
 
         const compactContext = buildCompactContext(userProfile, existingPlan);
 
-        // Legacy full prompt — replaced for performance
-        // const systemPrompt = `You are a career guidance AI. ${buildCompactProfile(userProfile)} ${buildPlanContext(existingPlan)}`;
-        const systemPrompt = `You are a career guidance AI assistant. Current plan: ${buildPlanContext(existingPlan)}. ${compactContext}. Help the user refine, update, or act on their plan. Be concise.`;
+        // Use shared career plan system prompt for consistency
+        const systemPrompt = [
+            CAREER_PLAN_SYSTEM_PROMPT,
+            `You are a career guidance AI assistant. Current plan: ${buildPlanContext(existingPlan)}. ${compactContext}. Help the user refine, update, or act on their plan. Be concise.`,
+        ].join('\n\n');
 
         const legacyPrompt = `
             The following is the professional profile of a student/professional using Nextro Career Pathfinder.
@@ -278,6 +282,7 @@ exports.askAI = async (req, res) => {
             } catch (primaryError) {
                 // Retry once with a compact prompt to avoid token/latency spikes on long chat histories.
                 const compactRetryPrompt = [
+                    CAREER_PLAN_SYSTEM_PROMPT,
                     `SYSTEM: You are a concise career guidance AI.`,
                     `PROFILE: ${buildCompactProfile(userProfile)}`,
                     `PLAN: ${buildPlanContext(existingPlan)}`,
@@ -494,24 +499,20 @@ exports.generateCareerPlan = async (req, res) => {
             return res.status(404).json({ message: "User not found" });
         }
 
-        const prompt = `
-            PROFILE SUMMARY:
-            ${buildCompactProfile(userProfile)}
-
-            You are a career guidance AI. Based on the user profile provided, generate a structured career plan.
-            You MUST respond with only a valid JSON object. No markdown, no explanation, no extra text.
-            Follow this exact schema:
-            {
-              "careerGoal": "string - the main career goal",
-              "milestones": [
-                { "title": "string", "description": "string", "dueDate": "string e.g. Month Year" }
-              ],
-              "weeklyTasks": ["string", "string"],
-              "recommendedSkills": ["string", "string"],
-              "recommendedCourses": ["string", "string"],
-              "skillGapAnalysis": ["string - one gap per item"]
-            }
-        `;
+                const prompt = [
+                        CAREER_PLAN_SYSTEM_PROMPT,
+                        `PROFILE SUMMARY:\n${buildCompactProfile(userProfile)}`,
+                        `You MUST respond with only a valid JSON object. No markdown, no explanation, no extra text.`,
+                        `Follow this exact schema:`,
+                        JSON.stringify({
+                                careerGoal: 'string - the main career goal',
+                                milestones: [{ title: 'string', description: 'string', dueDate: 'string e.g. Month Year' }],
+                                weeklyTasks: ['string', 'string'],
+                                recommendedSkills: ['string', 'string'],
+                                recommendedCourses: ['string', 'string'],
+                                skillGapAnalysis: ['string - one gap per item'],
+                        }, null, 2)
+                ].join('\n\n');
 
         const preferredProvider = (process.env.CAREER_PATH_PROVIDER || '').toLowerCase();
         const { provider, model: roadmapModel } = getProvider('career path roadmap generation', preferredProvider);
@@ -589,6 +590,19 @@ exports.generateCareerPlan = async (req, res) => {
             code: error.code || "AI_FAILED",
             message: error.message || "AI service temporarily unavailable"
         });
+    }
+};
+
+exports.getJobStatus = async (req, res) => {
+    try {
+        const jobId = req.params.jobId;
+        if (!jobId) return res.status(400).json({ success: false, error: 'jobId required' });
+        const status = await getJobStatus(String(jobId));
+        if (!status) return res.status(404).json({ success: false, error: 'Job not found' });
+        return res.json({ success: true, job: status });
+    } catch (err) {
+        console.error('getJobStatus error:', err);
+        return res.status(500).json({ success: false, error: err.message });
     }
 };
 

@@ -41,12 +41,16 @@ export default function RecommendationPanel({ plan }: RecommendationPanelProps) 
     }
   };
 
-  // Group recommendations by type
-  const skillGaps = plan.recommendations.filter((r) => r.type === "SKILL_GAP");
-  const resources = plan.recommendations.filter((r) => r.type === "RESOURCE");
-  const insights = plan.recommendations.filter((r) => r.type === "MARKET_INSIGHT");
+  const recommendations = Array.isArray(plan.recommendations)
+    ? plan.recommendations
+    : [];
 
-  const isEmpty = plan.recommendations.length === 0;
+  // Group recommendations by type
+  const skillGaps = recommendations.filter((r) => r.type === "SKILL_GAP");
+  const resources = recommendations.filter((r) => r.type === "RESOURCE");
+  const insights = recommendations.filter((r) => r.type === "MARKET_INSIGHT");
+
+  const isEmpty = recommendations.length === 0;
 
   const getRecommendationIcon = (type: string) => {
     switch (type) {
@@ -238,11 +242,11 @@ export default function RecommendationPanel({ plan }: RecommendationPanelProps) 
         {/* Confidence Note */}
         {!isEmpty && (
           <div className="text-xs text-muted-foreground text-center pt-2 border-t border-border/30">
-            AI Confidence: {plan.recommendations.length > 0 ? (
+            AI Confidence: {recommendations.length > 0 ? (
               <>
                 {(
-                  (plan.recommendations.reduce((sum, r) => sum + (r.confidence || 0), 0) /
-                    plan.recommendations.length) *
+                  (recommendations.reduce((sum, r) => sum + (r.confidence || 0), 0) /
+                    recommendations.length) *
                   100
                 ).toFixed(0)}
                 %

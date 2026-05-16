@@ -1,5 +1,6 @@
 const careerPlanService = require('../services/careerPlanService');
 const { queueGenerateMilestones, queueRefreshRecommendations } = require('../queues/aiQueue');
+const CareerPlan = require('../models/CareerPlan');
 
 /**
  * Create a new career plan.
@@ -29,13 +30,49 @@ exports.createPlan = async (req, res) => {
         experience: intensity ? `${intensity} intensity` : 'not specified',
         resume: '',
       };
-      await queueGenerateMilestones(plan._id.toString(), userId, targetRole, userProfile);
+      const queueResult = await queueGenerateMilestones(
+        plan._id.toString(),
+        userId,
+        targetRole,
+        userProfile
+      );
+
+      // If processed synchronously (fallback), return the updated plan
+      if (queueResult && queueResult.processed) {
+        const updatedPlan = await careerPlanService.getPlanById(plan._id.toString(), userId);
+        return res.status(201).json({
+          success: true,
+          data: updatedPlan,
+          message: 'Career plan created with recommendations.',
+        });
+      }
+
+      // If queued, persist the job id for status polling
+      if (queueResult && queueResult.jobId) {
+        try {
+          await CareerPlan.findByIdAndUpdate(plan._id.toString(), { aiJobId: String(queueResult.jobId) });
+        } catch (updErr) {
+          console.warn('[CONTROLLER] Failed to persist aiJobId on plan:', updErr.message);
+        }
+
+        const updatedPlan = await careerPlanService.getPlanById(plan._id.toString(), userId);
+        return res.status(202).json({
+          success: true,
+          data: updatedPlan,
+          message: 'Career plan created. AI generation queued.',
+          jobId: queueResult.jobId,
+        });
+      }
     } catch (queueErr) {
       console.warn(`[CONTROLLER] Failed to queue AI job: ${queueErr.message}. Continuing.`);
       // Don't fail the request; AI can be generated later
     }
 
-    return res.status(201).json({ success: true, data: plan });
+    return res.status(201).json({
+      success: true,
+      data: plan,
+      message: 'Career plan created. AI generation is in progress.',
+    });
   } catch (err) {
     console.error('createPlan error:', err);
     return res.status(500).json({ success: false, error: err.message });
@@ -173,11 +210,25 @@ exports.refreshPlan = async (req, res) => {
 
     // Enqueue refresh job
     const userProfile = { experience: '', resume: '' };
-    await queueRefreshRecommendations(planId, userId, userProfile);
+    const queueResult = await queueRefreshRecommendations(planId, userId, userProfile);
+
+    // Persist refresh job id when available
+    if (queueResult && queueResult.jobId) {
+      try {
+        await CareerPlan.findByIdAndUpdate(planId, { aiLastRefreshJobId: String(queueResult.jobId) });
+      } catch (updErr) {
+        console.warn('[CONTROLLER] Failed to persist aiLastRefreshJobId on plan:', updErr.message);
+      }
+      return res.status(202).json({
+        success: true,
+        message: 'Plan refresh queued. Check back in a few seconds for updated recommendations.',
+        jobId: queueResult.jobId,
+      });
+    }
 
     return res.status(200).json({
       success: true,
-      message: 'Plan refresh queued. Check back in a few seconds for updated recommendations.',
+      message: 'Plan refresh processed synchronously.',
     });
   } catch (err) {
     console.error('refreshPlan error:', err);
