@@ -70,6 +70,7 @@ export interface CareerPlan {
   recommendedSkills?: string[];
   weeklyTasks?: string[];
   skillGapAnalysis?: string[];
+  skillGapReport?: string;
   notes?: string;
   createdAt?: string; // ISO date
   updatedAt?: string; // ISO date

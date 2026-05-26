@@ -12,6 +12,7 @@
     "test:exchange-services": "node scripts/test_exchange_services.js",
     "test:trade-flow": "node scripts/test_trade_flow.js",
     "test:notification-hooks": "node scripts/test_notification_hooks.js",
+    "test:skill-gap-pipeline": "node scripts/test_skill_gap_pipeline.js",
     "chat": "node scripts/chat_cli.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

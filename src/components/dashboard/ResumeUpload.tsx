@@ -1,6 +1,8 @@
-import { useState, useRef } from "react";
-import { Upload, FileText, CheckCircle, X } from "lucide-react";
+import { useRef, useState } from "react";
+import { CheckCircle, FileText, Upload, X } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
+
 import axios from "@/services/http";
 import { ResumeAnalysisReport } from "@/components/resume/ResumeAnalysisReport";
 
@@ -18,17 +20,19 @@ export function ResumeUpload() {
   const [uploaded, setUploaded] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [analysis, setAnalysis] = useState<any>(null);
+  const [analysisRaw, setAnalysisRaw] = useState("");
+  const [structured, setStructured] = useState(true);
+  const [analysisMessage, setAnalysisMessage] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = (selectedFile: File) => {
     const allowedTypes = [
       "application/pdf",
-      "application/msword",
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ];
 
     if (!allowedTypes.includes(selectedFile.type)) {
-      toast.error("Only PDF or Word documents allowed");
+      toast.error("Only PDF or DOCX documents are supported");
       return;
     }
 
@@ -39,6 +43,10 @@ export function ResumeUpload() {
 
     setFile(selectedFile);
     setUploaded(false);
+    setAnalysis(null);
+    setAnalysisRaw("");
+    setStructured(true);
+    setAnalysisMessage("");
   };
 
   const handleUpload = async () => {
@@ -60,11 +68,29 @@ export function ResumeUpload() {
         },
       });
 
-      setAnalysis(response.data?.analysis || null);
+      const nextAnalysis = response.data?.analysis || null;
+      const nextAnalysisRaw = String(response.data?.analysisRaw || "");
+      const isStructured = response.data?.structured !== false;
+      const nextMessage = String(
+        response.data?.parseWarning || response.data?.message || "",
+      );
+
+      setAnalysis(nextAnalysis);
+      setAnalysisRaw(nextAnalysisRaw);
+      setStructured(isStructured);
+      setAnalysisMessage(nextMessage);
       setUploaded(true);
-      toast.success("Resume uploaded and analyzed successfully!");
+
+      if (nextAnalysis) {
+        toast.success("Resume analyzed successfully!");
+      } else if (nextAnalysisRaw) {
+        toast.warning("Resume analyzed with fallback AI feedback.");
+      } else {
+        toast.error("Resume upload succeeded, but no AI feedback was returned.");
+      }
     } catch (error: any) {
-      const message = error?.response?.data?.message || "Upload failed. Please try again.";
+      const message =
+        error?.response?.data?.message || "Upload failed. Please try again.";
       toast.error(message);
     } finally {
       setUploading(false);
@@ -110,7 +136,7 @@ export function ResumeUpload() {
         <input
           ref={inputRef}
           type="file"
-          accept=".pdf,.doc,.docx"
+          accept=".pdf,.docx"
           className="hidden"
           onChange={(event) => {
             const selectedFile = event.target.files?.[0];
@@ -125,7 +151,7 @@ export function ResumeUpload() {
         <div className="text-center">
           <p className="text-lg font-black text-foreground">Drop your CV here</p>
           <p className="text-sm font-medium text-muted-foreground">
-            PDF, DOC or DOCX — max 5MB
+            PDF or DOCX - max 5MB
           </p>
         </div>
       </div>
@@ -163,6 +189,9 @@ export function ResumeUpload() {
                 setFile(null);
                 setUploaded(false);
                 setAnalysis(null);
+                setAnalysisRaw("");
+                setStructured(true);
+                setAnalysisMessage("");
               }}
               className="rounded-xl p-2 text-muted-foreground hover:bg-muted/50"
             >
@@ -173,7 +202,53 @@ export function ResumeUpload() {
       )}
 
       {analysis && (
-        <ResumeAnalysisReport analysis={analysis} fileName={file?.name || undefined} targetRole={targetRole || undefined} />
+        <ResumeAnalysisReport
+          analysis={analysis}
+          fileName={file?.name || undefined}
+          targetRole={targetRole || undefined}
+        />
+      )}
+
+      {!analysis && analysisRaw && (
+        <div className="rounded-[2rem] border border-amber-500/30 bg-amber-500/10 p-6">
+          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-amber-300">
+                Fallback AI Feedback
+              </p>
+              <h3 className="mt-2 text-xl font-black text-foreground">
+                Structured resume report could not be rendered
+              </h3>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {analysisMessage ||
+                  "The AI returned feedback, but it was not in the exact format needed for the ATS dashboard."}
+              </p>
+            </div>
+            <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-amber-300">
+              {structured ? "Structured" : "Fallback"}
+            </span>
+          </div>
+
+          <div className="mt-5 rounded-[2rem] border border-border/40 bg-card/70 p-6 shadow-xl shadow-black/5 backdrop-blur-sm">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-primary">
+                  Resume Feedback Card
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  AI-generated feedback shown in fallback mode.
+                </p>
+              </div>
+              <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-primary">
+                ATS Review
+              </span>
+            </div>
+
+            <div className="prose prose-sm max-w-none text-foreground prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-li:text-foreground prose-ul:my-3 prose-ol:my-3">
+              <ReactMarkdown>{analysisRaw}</ReactMarkdown>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

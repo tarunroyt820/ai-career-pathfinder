@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
   Bell,
@@ -25,7 +26,8 @@ import {
   getEnhancedProfile,
   updateEnhancedProfile,
 } from "@/services/enhancedProfileApi";
-import { uploadProfilePhoto } from "@/services/profileApi";
+import { deleteAccount, uploadProfilePhoto } from "@/services/profileApi";
+import { deleteHistory as deleteAIHistory } from "@/services/aiApi";
 
 type TabId = "profile" | "upgrade" | "notifications" | "account" | "privacy";
 
@@ -92,9 +94,12 @@ const computeProfileCompleteness = (profile: EnhancedProfile) => {
 };
 
 export function SettingsShell() {
+  const navigate = useNavigate();
   const [profile, setProfile] = useState<EnhancedProfile | null>(null);
   const [savedProfile, setSavedProfile] = useState<EnhancedProfile | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeletingChats, setIsDeletingChats] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>("profile");
   const [toggles, setToggles] = useState<ToggleState>(initialToggles);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -177,6 +182,61 @@ export function SettingsShell() {
       if (event.target) {
         event.target.value = "";
       }
+    }
+  };
+
+  const clearAuthSession = () => {
+    localStorage.removeItem("nextro_token");
+    localStorage.removeItem("nextro_refresh_token");
+  };
+
+  const handleDeleteChats = async () => {
+    const confirmed = window.confirm(
+      "Delete all AI Assistant chats? This removes only assistant conversation history and cannot be undone.",
+    );
+
+    if (!confirmed) return;
+
+    setIsDeletingChats(true);
+    try {
+      const result = await deleteAIHistory();
+      toast.success(
+        result.deletedCount > 0
+          ? `Deleted ${result.deletedCount} AI chat message${result.deletedCount === 1 ? "" : "s"}.`
+          : "No saved AI chats were found.",
+      );
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to delete AI chat history";
+      toast.error(message);
+    } finally {
+      setIsDeletingChats(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    const confirmed = window.confirm(
+      "Delete your account permanently? This will remove your profile, AI chats, career plans, and related data. This cannot be undone.",
+    );
+
+    if (!confirmed) return;
+
+    setIsDeletingAccount(true);
+    try {
+      const result = await deleteAccount();
+      clearAuthSession();
+      toast.success(result.message || "Account deleted successfully");
+      navigate("/login", { replace: true });
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to delete account";
+      toast.error(message);
+    } finally {
+      setIsDeletingAccount(false);
     }
   };
 
@@ -803,6 +863,23 @@ export function SettingsShell() {
                 </div>
                 <div className="flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between">
                   <div>
+                    <p className="text-sm font-bold text-white">Delete AI assistant chats</p>
+                    <p className="mt-1 text-sm text-[rgba(189,216,233,0.62)]">
+                      Remove only your saved AI Assistant conversation history.
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="rounded-xl border-[rgba(239,159,39,0.48)] px-5 text-[#efc176]"
+                    onClick={handleDeleteChats}
+                    disabled={isDeletingChats || isDeletingAccount}
+                  >
+                    {isDeletingChats ? "Deleting Chats..." : "Delete AI Chats"}
+                  </Button>
+                </div>
+                <div className="mx-6 border-t border-[rgba(226,75,74,0.22)]" />
+                <div className="flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between">
+                  <div>
                     <p className="text-sm font-bold text-white">Delete account</p>
                     <p className="mt-1 text-sm text-[rgba(189,216,233,0.62)]">
                       Permanently remove your profile, data, and matches.
@@ -811,8 +888,10 @@ export function SettingsShell() {
                   <Button
                     variant="outline"
                     className="rounded-xl border-[rgba(226,75,74,0.48)] px-5 text-[#f09595]"
+                    onClick={handleDeleteAccount}
+                    disabled={isDeletingAccount || isDeletingChats}
                   >
-                    Delete Account
+                    {isDeletingAccount ? "Deleting Account..." : "Delete Account"}
                   </Button>
                 </div>
               </div>

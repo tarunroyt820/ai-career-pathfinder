@@ -6,6 +6,7 @@ const upload = require('../middleware/upload');
 
 router.get('/', protect, profileController.getProfile);
 router.put('/', protect, profileController.updateProfile);
+router.delete('/', protect, profileController.deleteAccount);
 router.post('/photo', protect, upload.single('photo'), profileController.uploadProfilePhoto);
 router.get('/:id', profileController.getPublicProfile);
 

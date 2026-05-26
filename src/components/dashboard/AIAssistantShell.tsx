@@ -24,7 +24,7 @@ import {
 import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
-import { askAI, ChatMessage, getHistory, streamAI } from "@/services/aiApi";
+import { askAI, ChatMessage, deleteHistory, getHistory, streamAI } from "@/services/aiApi";
 
 type Attachment = {
   name: string;
@@ -278,6 +278,35 @@ export function AIAssistantShell() {
     }
   };
 
+  const handleDeleteSavedHistory = async () => {
+    const confirmed = window.confirm(
+      "Delete all saved AI Assistant chats? This cannot be undone.",
+    );
+    if (!confirmed) return;
+
+    try {
+      setIsLoading(true);
+      const result = await deleteHistory();
+      setMessages([]);
+      setInput("");
+      setAttachments([]);
+      adjustHeight(true);
+      toast.success(
+        result.deletedCount > 0
+          ? `Deleted ${result.deletedCount} saved chat message${result.deletedCount === 1 ? "" : "s"}.`
+          : "No saved AI chat history was found.",
+      );
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message ||
+          error?.message ||
+          "Failed to delete AI chat history",
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const selectCommandSuggestion = (index: number) => {
     const selected = commandSuggestions[index];
     setInput(`${selected.prefix} `);
@@ -352,7 +381,7 @@ export function AIAssistantShell() {
           <button type="button" onClick={() => loadHistory(true)} disabled={isFetching} className="flex h-9 w-9 items-center justify-center rounded-xl text-white/45 transition hover:bg-white/5 hover:text-white disabled:opacity-40">
             <RefreshCw className={cn("h-4 w-4", isFetching && "animate-spin")} />
           </button>
-          <button type="button" onClick={() => { setMessages([]); setInput(""); setAttachments([]); adjustHeight(true); toast.success("Chat cleared from the current view"); }} className="flex h-9 w-9 items-center justify-center rounded-xl text-white/45 transition hover:bg-red-500/10 hover:text-red-300">
+          <button type="button" onClick={handleDeleteSavedHistory} disabled={isLoading || isFetching} className="flex h-9 w-9 items-center justify-center rounded-xl text-white/45 transition hover:bg-red-500/10 hover:text-red-300 disabled:opacity-40">
             <Trash2 className="h-4 w-4" />
           </button>
         </div>

@@ -17,6 +17,8 @@ const aiRateLimiter = rateLimit({
 router.post("/ask", protect, aiRateLimiter, aiController.askAI);
 router.post("/chat/stream", protect, aiRateLimiter, aiController.streamChat);
 router.get("/history", protect, aiRateLimiter, aiController.getHistory);
+router.delete("/history", protect, aiRateLimiter, aiController.deleteHistory);
+router.post("/skill-gap", protect, aiRateLimiter, aiController.generateSkillGap);
 
 // Generate a full structured career plan (returns saved plan)
 router.post("/generate-career-plan", protect, aiRateLimiter, aiController.generateCareerPlan);

@@ -117,3 +117,16 @@ export const getHistory = async (): Promise<ChatMessage[]> => {
         throw error;
     }
 };
+
+export const deleteHistory = async (): Promise<{ success: boolean; message: string; deletedCount: number }> => {
+    try {
+        const response = await axios.delete<{ success: boolean; message: string; deletedCount: number }>(
+            `${API_URL}/history`,
+            { headers: getAuthHeader() }
+        );
+        return response.data;
+    } catch (error) {
+        console.error("Error deleting AI history:", error);
+        throw error;
+    }
+};

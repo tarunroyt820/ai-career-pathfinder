@@ -4,9 +4,9 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/common/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { askAI } from "@/services/aiApi";
 import { getCareerPlan } from "@/services/careerPlanApi";
 import { getProfile } from "@/services/profileApi";
+import { generateSkillGapAnalysis } from "@/services/skillGapApi";
 import { CareerPlan } from "@/types/careerPlan";
 import { UserProfile } from "@/types/profile";
 
@@ -33,7 +33,9 @@ export function SkillGapShell() {
       .then(([plan, profile]) => {
         setCareerPlan(plan);
         setUserProfile(profile);
-        if ((plan?.skillGapAnalysis?.length ?? 0) > 0) {
+        if (plan?.skillGapReport) {
+          setAnalysis(plan.skillGapReport);
+        } else if ((plan?.skillGapAnalysis?.length ?? 0) > 0) {
           setAnalysis((plan?.skillGapAnalysis ?? []).map((gap) => `- ${gap}`).join("\n"));
         }
       })
@@ -60,13 +62,11 @@ export function SkillGapShell() {
     setMatchedSkills(matched);
   }, [careerPlan, userProfile]);
 
-  const fetchSkillGapFromAI = async (role: string) => {
-    const result = await askAI(
-      `Perform a detailed skill gap analysis for me if I want to become a ${role}. Based on my current profile skills, tell me: 1) Skills I already have that are relevant, 2) Skills I am missing, 3) A prioritised learning plan with estimated timeframes. Format clearly using markdown.`,
-      { provider: "huggingface" },
-    );
-
-    setAnalysis(result.answer);
+  const fetchSkillGapAnalysis = async (role: string) => {
+    const result = await generateSkillGapAnalysis(role);
+    setAnalysis(result.analysis);
+    setSkillGaps(result.missingSkills || []);
+    setMatchedSkills(result.existingSkills || []);
   };
 
   const runAnalysis = async () => {
@@ -80,10 +80,12 @@ export function SkillGapShell() {
     setLoading(true);
 
     try {
-      if (careerPlan && (careerPlan.skillGapAnalysis?.length ?? 0) > 0) {
+      if (careerPlan?.skillGapReport) {
+        setAnalysis(careerPlan.skillGapReport);
+      } else if (careerPlan && (careerPlan.skillGapAnalysis?.length ?? 0) > 0) {
         setAnalysis((careerPlan.skillGapAnalysis ?? []).map((gap) => `- ${gap}`).join("\n"));
       } else {
-        await fetchSkillGapFromAI(role);
+        await fetchSkillGapAnalysis(role);
       }
     } catch {
       toast.error("Analysis failed. Please try again.");

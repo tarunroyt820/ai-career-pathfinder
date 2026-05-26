@@ -68,6 +68,85 @@ const buildLocalFallbackAnswer = (question, profile, plan) => {
     ].join("\n");
 };
 
+const buildSkillGapPrompt = ({ role, profile, plan }) => {
+    const profileSkills = Array.isArray(profile?.skills) ? profile.skills : [];
+    const recommendedSkills = Array.isArray(plan?.recommendedSkills) ? plan.recommendedSkills : [];
+
+    return [
+        'You are a career skill-gap analyst. Return only valid JSON.',
+        JSON.stringify({
+            summary: 'string',
+            existingSkills: ['string'],
+            missingSkills: ['string'],
+            learningPlan: ['string'],
+            nextStep: 'string'
+        }, null, 2),
+        `Target role: ${role}`,
+        `Current title: ${profile?.jobTitle || 'Not specified'}`,
+        `Career goal: ${profile?.careerGoal || 'Not specified'}`,
+        `Profile skills: ${profileSkills.length ? profileSkills.join(', ') : 'None listed'}`,
+        `Plan recommended skills: ${recommendedSkills.length ? recommendedSkills.join(', ') : 'None available'}`,
+        'Base the missing skills on the gap between the target role and the user profile.',
+        'Keep recommendations practical and concise.',
+    ].join('\n\n');
+};
+
+const formatSkillGapReport = ({ role, summary, existingSkills, missingSkills, learningPlan, nextStep }) => {
+    const sections = [
+        `# Skill Gap Report for ${role}`,
+        '',
+        `## Summary`,
+        summary || `This report highlights the most important gaps to close for ${role}.`,
+        '',
+        `## Skills You Already Have`,
+        ...(existingSkills.length ? existingSkills.map((item) => `- ${item}`) : ['- No confirmed matching skills yet.']),
+        '',
+        `## Skills You Need To Build`,
+        ...(missingSkills.length ? missingSkills.map((item) => `- ${item}`) : ['- No critical missing skills identified.']),
+        '',
+        `## Recommended Learning Plan`,
+        ...(learningPlan.length ? learningPlan.map((item, index) => `${index + 1}. ${item}`) : ['1. Start with one foundational skill and build a small practice project.']),
+        '',
+        `## Immediate Next Step`,
+        nextStep || `Choose one missing skill and begin a focused practice plan this week.`,
+    ];
+
+    return sections.join('\n');
+};
+
+const extractList = (value) => Array.isArray(value)
+    ? value.map((item) => String(item || '').trim()).filter(Boolean)
+    : [];
+
+const buildFallbackSkillGap = ({ role, profile, plan }) => {
+    const profileSkills = extractList(profile?.skills);
+    const recommendedSkills = extractList(plan?.recommendedSkills);
+    const existingSkills = recommendedSkills.filter((skill) =>
+        profileSkills.some((profileSkill) => profileSkill.toLowerCase() === skill.toLowerCase())
+    );
+    const missingSkills = recommendedSkills.filter((skill) =>
+        !profileSkills.some((profileSkill) => profileSkill.toLowerCase() === skill.toLowerCase())
+    );
+    const learningPlan = missingSkills.length
+        ? missingSkills.map((skill) => `Build ${skill} through guided practice and one portfolio-quality exercise.`)
+        : [`Refine your strongest skills for ${role} with one advanced project.`];
+
+    const payload = {
+        summary: `You already have some relevant experience, but closing a few focused gaps will improve your readiness for ${role}.`,
+        existingSkills,
+        missingSkills,
+        learningPlan,
+        nextStep: missingSkills[0]
+            ? `Start with ${missingSkills[0]} and complete one measurable practice task this week.`
+            : `Advance one of your strongest skills with a real project this week.`,
+    };
+
+    return {
+        ...payload,
+        report: formatSkillGapReport({ role, ...payload }),
+    };
+};
+
 const isFallbackEnabled = () => String(process.env.AI_ENABLE_FALLBACK || 'false').toLowerCase() === 'true';
 
 const saveAiLog = async ({
@@ -593,6 +672,79 @@ exports.generateCareerPlan = async (req, res) => {
     }
 };
 
+exports.generateSkillGap = async (req, res) => {
+    try {
+        const role = String(req.body?.role || '').trim();
+        if (!role) {
+            return res.status(400).json({ success: false, message: 'role is required' });
+        }
+
+        let userProfile = profileCache.get(req.user.id);
+        if (!userProfile) {
+            userProfile = await User.findById(req.user.id).lean();
+            profileCache.set(req.user.id, userProfile);
+        }
+
+        if (!userProfile) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        const existingPlan = await CareerPlan.findOne({ userId: req.user.id });
+        const prompt = buildSkillGapPrompt({ role, profile: userProfile, plan: existingPlan });
+        const { provider, model } = getProvider(`skill gap analysis for ${role}`, 'huggingface');
+
+        let normalized;
+        try {
+            const result = await aiService.generate(prompt, {
+                provider,
+                model,
+                maxTokens: Number(process.env.HF_SKILLGAP_MAX_NEW_TOKENS || process.env.CAREER_PATH_MAX_TOKENS || 768),
+            });
+            const jsonMatch = String(result?.text || '').match(/\{[\s\S]*\}/);
+            if (!jsonMatch) {
+                throw new Error('No JSON object found in skill gap response');
+            }
+
+            const parsed = JSON.parse(jsonMatch[0]);
+            normalized = {
+                summary: String(parsed.summary || '').trim(),
+                existingSkills: extractList(parsed.existingSkills),
+                missingSkills: extractList(parsed.missingSkills),
+                learningPlan: extractList(parsed.learningPlan),
+                nextStep: String(parsed.nextStep || '').trim(),
+            };
+        } catch (error) {
+            console.warn(`[SKILL GAP] Falling back to rule-based output: ${error.message}`);
+            normalized = buildFallbackSkillGap({ role, profile: userProfile, plan: existingPlan });
+        }
+
+        const report = normalized.report || formatSkillGapReport({ role, ...normalized });
+
+        if (existingPlan) {
+            existingPlan.skillGapAnalysis = normalized.missingSkills;
+            existingPlan.skillGapReport = report;
+            await existingPlan.save();
+        }
+
+        return res.json({
+            success: true,
+            role,
+            analysis: report,
+            existingSkills: normalized.existingSkills,
+            missingSkills: normalized.missingSkills,
+            learningPlan: normalized.learningPlan,
+            nextStep: normalized.nextStep,
+            savedToPlan: Boolean(existingPlan),
+        });
+    } catch (error) {
+        console.error('generateSkillGap Error:', error);
+        return res.status(500).json({
+            success: false,
+            message: error.message || 'Failed to generate skill gap analysis',
+        });
+    }
+};
+
 exports.getJobStatus = async (req, res) => {
     try {
         const jobId = req.params.jobId;
@@ -621,6 +773,25 @@ exports.getHistory = async (req, res) => {
         res.status(500).json({
             message: "Failed to fetch chat history",
             success: false
+        });
+    }
+};
+
+exports.deleteHistory = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const result = await Message.deleteMany({ userId });
+
+        return res.json({
+            success: true,
+            message: 'AI assistant chat history deleted successfully',
+            deletedCount: Number(result?.deletedCount || 0),
+        });
+    } catch (error) {
+        console.error('Delete History Error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to delete chat history',
         });
     }
 };

@@ -1,4 +1,9 @@
 const User = require('../models/User');
+const Message = require('../models/Message');
+const CareerPlan = require('../models/CareerPlan');
+const AIRequestLog = require('../models/AIRequestLog');
+const ResumeUploadLog = require('../models/ResumeUploadLog');
+const profileCache = require('../utils/profileCache');
 
 exports.getProfile = async (req, res) => {
     try {
@@ -75,5 +80,35 @@ exports.uploadProfilePhoto = async (req, res) => {
         });
     } catch (error) {
         res.status(500).json({ message: error.message });
+    }
+};
+
+exports.deleteAccount = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const user = await User.findById(userId).select('fullName email');
+
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        await Promise.all([
+            User.deleteOne({ _id: userId }),
+            Message.deleteMany({ userId }),
+            CareerPlan.deleteMany({ userId }),
+            AIRequestLog.deleteMany({ userId }),
+            ResumeUploadLog.deleteMany({ userId }),
+        ]);
+
+        profileCache.invalidate(userId);
+
+        return res.json({
+            success: true,
+            message: 'Account and related data deleted successfully',
+            data: user,
+        });
+    } catch (error) {
+        console.error('deleteAccount failed:', error);
+        return res.status(500).json({ success: false, message: 'Failed to delete account' });
     }
 };

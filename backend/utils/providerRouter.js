@@ -56,7 +56,22 @@ module.exports = {
     getProvider: (message, preferredProvider) => {
         const intent = classifyIntent(message);
         const preferred = String(preferredProvider || "").toLowerCase().trim();
-        const provider = SUPPORTED_PROVIDERS.has(preferred) ? preferred : DEFAULT_PROVIDER;
+
+        // Allow an explicit preferred provider to win
+        let provider = SUPPORTED_PROVIDERS.has(preferred) ? preferred : DEFAULT_PROVIDER;
+
+        // If this is a roadmap generation intent and there is an OpenRouter API key
+        // available, and the environment hasn't explicitly set a CAREER_PATH_PROVIDER,
+        // prefer OpenRouter for roadmap tasks because it is configured for reasoning-heavy flows.
+        try {
+            const careerOverride = String(process.env.CAREER_PATH_PROVIDER || '').toLowerCase().trim();
+            const openrouterKeyPresent = Boolean(process.env.OPENROUTER_API_KEY && String(process.env.OPENROUTER_API_KEY).trim());
+            if (intent === 'roadmap' && !careerOverride && openrouterKeyPresent) {
+                provider = 'openrouter';
+            }
+        } catch (e) {
+            // ignore and fallback to configured provider
+        }
         const modelPolicy = MODEL_POLICY_BY_PROVIDER[provider] || MODEL_POLICY_BY_PROVIDER[DEFAULT_PROVIDER] || MODEL_POLICY_BY_PROVIDER.groq;
 
         return {

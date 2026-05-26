@@ -60,3 +60,15 @@ export const uploadProfilePhoto = async (file: File): Promise<UserProfile> => {
         throw error;
     }
 };
+
+export const deleteAccount = async (): Promise<{ success: boolean; message: string }> => {
+    try {
+        const response = await axios.delete<{ success: boolean; message: string }>(API_URL, {
+            headers: getAuthHeader(),
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Error deleting account:", error);
+        throw error;
+    }
+};

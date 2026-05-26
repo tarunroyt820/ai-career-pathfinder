@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProgressBar } from "@/components/common/ProgressBar";
+import ATSPieChart from "./ATSPieChart";
 import { AlertCircle, CheckCircle2, CircleSlash, Sparkles, TrendingUp } from "lucide-react";
 
 type ScoreMap = {
@@ -171,9 +172,6 @@ export function ResumeAnalysisReport({ analysis, fileName, targetRole }: ResumeA
   const formattingScore = clampScore(scores.formattingClarity);
   const finalScore = clampScore(scores.overallScore || atsScore);
   const ringPercent = Math.max(0, Math.min(100, finalScore));
-  const ringStyle = {
-    background: `conic-gradient(#16a085 0% ${ringPercent}%, rgba(255,255,255,0.08) ${ringPercent}% 100%)`,
-  };
 
   const sectionFeedback = analysis?.sectionFeedback || {};
   const keywordPresent = toList(analysis?.keywords?.present);
@@ -214,13 +212,8 @@ export function ResumeAnalysisReport({ analysis, fileName, targetRole }: ResumeA
 
           <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
             <div className="rounded-[2rem] border border-border/40 bg-background/50 p-6">
-              <div className="mx-auto flex h-44 w-44 items-center justify-center rounded-full p-4" style={ringStyle}>
-                <div className="flex h-28 w-28 items-center justify-center rounded-full border border-border/30 bg-card text-center shadow-lg">
-                  <div>
-                    <p className={`text-3xl font-black ${scoreTone(finalScore)}`}>{finalScore}%</p>
-                    <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">ATS</p>
-                  </div>
-                </div>
+              <div className="mx-auto flex h-44 w-44 items-center justify-center rounded-full p-4">
+                <ATSPieChart percent={Math.round(atsScore)} size={176} strokeWidth={22} />
               </div>
               <div className="mt-4 text-center">
                 <p className="text-sm font-semibold text-foreground">ATS Compatibility</p>

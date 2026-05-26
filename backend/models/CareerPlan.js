@@ -77,6 +77,8 @@ const CareerPlanSchema = new Schema(
     milestones: [MilestoneSchema],
     roadmap: { type: RoadmapSchema, default: null },
     recommendations: [RecommendationSchema],
+    skillGapAnalysis: [{ type: String }],
+    skillGapReport: { type: String, default: '' },
     notes: { type: String },
   },
   { timestamps: true, versionKey: '__v' }
