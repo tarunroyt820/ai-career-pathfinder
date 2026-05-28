@@ -167,6 +167,7 @@ const normalizeOptions = (preferredProvider) => {
             model: undefined,
             maxTokens: undefined,
             messages: undefined,
+            temperature: undefined,
         };
     }
 
@@ -176,6 +177,7 @@ const normalizeOptions = (preferredProvider) => {
             model: undefined,
             maxTokens: undefined,
             messages: undefined,
+            temperature: undefined,
         };
     }
 
@@ -184,6 +186,7 @@ const normalizeOptions = (preferredProvider) => {
         model: preferredProvider.model,
         maxTokens: preferredProvider.maxTokens,
         messages: preferredProvider.messages,
+        temperature: preferredProvider.temperature,
     };
 };
 
@@ -208,7 +211,12 @@ const generate = async (message, preferredProvider) => {
     try {
         console.log(`[AI SERVICE] Trying provider: ${provider}${normalized.model ? ` model: ${normalized.model}` : ""} (timeout: ${AI_TIMEOUT_MS}ms)`);
         const rawResponse = await withTimeout(
-            callProvider(provider, message, { model: normalized.model, maxTokens: normalized.maxTokens, messages: normalized.messages }),
+            callProvider(provider, message, {
+                model: normalized.model,
+                maxTokens: normalized.maxTokens,
+                messages: normalized.messages,
+                temperature: normalized.temperature,
+            }),
             AI_TIMEOUT_MS,
             provider
         );

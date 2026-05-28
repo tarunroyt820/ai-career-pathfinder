@@ -15,6 +15,7 @@ const getAuthHeader = () => {
 
 export function ResumeUpload() {
   const [file, setFile] = useState<File | null>(null);
+  const [uploadedFileName, setUploadedFileName] = useState("");
   const [targetRole, setTargetRole] = useState("");
   const [uploading, setUploading] = useState(false);
   const [uploaded, setUploaded] = useState(false);
@@ -47,6 +48,30 @@ export function ResumeUpload() {
     setAnalysisRaw("");
     setStructured(true);
     setAnalysisMessage("");
+    setUploadedFileName("");
+  };
+
+  const applyAnalysisResponse = (payload: any) => {
+    const nextAnalysis = payload?.analysis || null;
+    const nextAnalysisRaw = String(payload?.analysisRaw || "");
+    const isStructured = payload?.structured !== false;
+    const nextMessage = String(
+      payload?.parseWarning || payload?.message || "",
+    );
+
+    setAnalysis(nextAnalysis);
+    setAnalysisRaw(nextAnalysisRaw);
+    setStructured(isStructured);
+    setAnalysisMessage(nextMessage);
+    setUploaded(true);
+
+    if (nextAnalysis) {
+      toast.success("Resume analyzed successfully!");
+    } else if (nextAnalysisRaw) {
+      toast.warning("Resume analyzed with fallback AI feedback.");
+    } else {
+      toast.error("Resume analysis finished, but no AI feedback was returned.");
+    }
   };
 
   const handleUpload = async () => {
@@ -68,29 +93,43 @@ export function ResumeUpload() {
         },
       });
 
-      const nextAnalysis = response.data?.analysis || null;
-      const nextAnalysisRaw = String(response.data?.analysisRaw || "");
-      const isStructured = response.data?.structured !== false;
-      const nextMessage = String(
-        response.data?.parseWarning || response.data?.message || "",
-      );
-
-      setAnalysis(nextAnalysis);
-      setAnalysisRaw(nextAnalysisRaw);
-      setStructured(isStructured);
-      setAnalysisMessage(nextMessage);
-      setUploaded(true);
-
-      if (nextAnalysis) {
-        toast.success("Resume analyzed successfully!");
-      } else if (nextAnalysisRaw) {
-        toast.warning("Resume analyzed with fallback AI feedback.");
-      } else {
-        toast.error("Resume upload succeeded, but no AI feedback was returned.");
-      }
+      setUploadedFileName(String(response.data?.file?.fileName || ""));
+      applyAnalysisResponse(response.data);
     } catch (error: any) {
       const message =
         error?.response?.data?.message || "Upload failed. Please try again.";
+      toast.error(message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleReanalyze = async () => {
+    if (!uploadedFileName) {
+      toast.error("Upload a resume first before updating the analysis.");
+      return;
+    }
+
+    setUploading(true);
+
+    try {
+      const response = await axios.post(
+        `${API_URL}/analyze`,
+        {
+          fileName: uploadedFileName,
+          targetRole: targetRole.trim(),
+        },
+        {
+          headers: {
+            ...getAuthHeader(),
+          },
+        },
+      );
+
+      applyAnalysisResponse(response.data);
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message || "Could not update the resume analysis.";
       toast.error(message);
     } finally {
       setUploading(false);
@@ -170,6 +209,11 @@ export function ResumeUpload() {
               <p className="text-xs text-muted-foreground">
                 {(file.size / 1024).toFixed(1)} KB
               </p>
+              {uploadedFileName && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Change the target role and rerun analysis without uploading again.
+                </p>
+              )}
             </div>
           </div>
 
@@ -180,13 +224,24 @@ export function ResumeUpload() {
                 disabled={uploading}
                 className="rounded-xl bg-primary px-6 py-2.5 text-sm font-black uppercase tracking-widest text-white transition-colors hover:bg-[#168777] disabled:opacity-50"
               >
-                {uploading ? "Uploading..." : "Upload"}
+                {uploading ? "Working..." : "Upload & Analyze"}
+              </button>
+            )}
+
+            {uploaded && uploadedFileName && (
+              <button
+                onClick={handleReanalyze}
+                disabled={uploading}
+                className="rounded-xl border border-primary/30 bg-primary/10 px-6 py-2.5 text-sm font-black uppercase tracking-widest text-primary transition-colors hover:bg-primary/15 disabled:opacity-50"
+              >
+                {uploading ? "Updating..." : "Update Analysis"}
               </button>
             )}
 
             <button
               onClick={() => {
                 setFile(null);
+                setUploadedFileName("");
                 setUploaded(false);
                 setAnalysis(null);
                 setAnalysisRaw("");

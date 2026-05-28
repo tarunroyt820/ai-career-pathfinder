@@ -11,6 +11,8 @@ const getResumeModel = () =>
 	process.env.HF_HEAVY_MODEL ||
 	process.env.HF_MODEL ||
 	process.env.HF_SKILLGAP_MODEL;
+const RESUME_ANALYSIS_MAX_TOKENS = Number(process.env.RESUME_ANALYSIS_MAX_TOKENS || 2600);
+const RESUME_ANALYSIS_TEMPERATURE = Number(process.env.RESUME_ANALYSIS_TEMPERATURE || 0.2);
 
 const parseAnalysisJson = (raw) => {
 	const value = String(raw || '').trim();
@@ -122,20 +124,78 @@ const normalizeParsedAnalysis = (parsed) => {
 };
 
 const repairAnalysisJson = async (rawText, systemInstruction, providerUsed, modelUsed) => {
-	const repairPrompt = [
-		systemInstruction,
-		'Your previous response was malformed or incomplete JSON.',
-		'Repair it and return ONLY one valid JSON object that matches the required schema.',
-		'Do not add markdown fences, explanations, or extra text.',
-		`BROKEN_RESPONSE:\n${String(rawText || '').slice(0, 14000)}`,
-	].join('\n\n');
+	const repairMessages = [
+		{
+			role: 'system',
+			content: systemInstruction,
+		},
+		{
+			role: 'user',
+			content: [
+				'Your previous response was malformed or incomplete JSON.',
+				'Repair it and return ONLY one valid JSON object that matches the required schema.',
+				'Do not add markdown fences, explanations, or extra text.',
+				`BROKEN_RESPONSE:\n${String(rawText || '').slice(0, 14000)}`,
+			].join('\n\n'),
+		},
+	];
 
 	const options = providerUsed
-		? { provider: providerUsed, model: modelUsed || getResumeModel() }
+		? {
+			provider: providerUsed,
+			model: modelUsed || getResumeModel(),
+			messages: repairMessages,
+			maxTokens: RESUME_ANALYSIS_MAX_TOKENS,
+			temperature: 0,
+		}
 		: undefined;
 
-	const repairedResult = await aiService.generate(repairPrompt, options);
+	const repairedResult = await aiService.generate(repairMessages[1].content, options);
 	return String(repairedResult?.text || '').trim();
+};
+
+const buildResumeMessages = (systemInstruction, extractedText, targetRole = '') => ([
+	{
+		role: 'system',
+		content: systemInstruction,
+	},
+	{
+		role: 'user',
+		content: [
+			'Analyze the resume content below.',
+			'Return ONLY one valid JSON object using the exact required schema.',
+			'If a detail is unavailable, keep the field but use an empty string, empty array, or 0.',
+			targetRole ? `Target role for tailoring: ${targetRole}` : '',
+			`RESUME_TEXT:\n${extractedText.slice(0, 15000)}`,
+		].filter(Boolean).join('\n\n'),
+	},
+]);
+
+const generateStructuredResumeAnalysis = async ({
+	systemInstruction,
+	extractedText,
+	targetRole,
+	provider,
+	model,
+	useSecondaryKey = false,
+	forceDeterministicRetry = false,
+}) => {
+	const messages = buildResumeMessages(systemInstruction, extractedText, targetRole);
+	if (forceDeterministicRetry) {
+		messages.push({
+			role: 'user',
+			content: 'This is a retry. Return the final answer as strict JSON only. Do not include markdown, prose, or trailing characters.',
+		});
+	}
+
+	return aiService.generate(messages[messages.length - 1].content, {
+		provider,
+		model,
+		messages,
+		maxTokens: RESUME_ANALYSIS_MAX_TOKENS,
+		temperature: forceDeterministicRetry ? 0 : RESUME_ANALYSIS_TEMPERATURE,
+		useSecondaryKey,
+	});
 };
 
 const analyzeResumeFile = async (filePath, mimeType, targetRole = '') => {
@@ -148,25 +208,28 @@ const analyzeResumeFile = async (filePath, mimeType, targetRole = '') => {
 		? JOB_TARGETED_ANALYSIS_PROMPT(targetRole)
 		: RESUME_ANALYSIS_PROMPT;
 
-	const analysisPrompt = [
-		systemInstruction,
-		'Resume content starts below. Analyze it now and return JSON only.',
-		`RESUME_TEXT:\n${extractedText.slice(0, 15000)}`,
-	].join('\n\n');
-
 	let aiResult;
 	// Try Hugging Face explicitly first (preferred for resume parsing), but
 	// fall back to the default configured provider if HF is not configured or fails.
 	try {
-		aiResult = await aiService.generate(analysisPrompt, {
+		aiResult = await generateStructuredResumeAnalysis({
+			systemInstruction,
+			extractedText,
+			targetRole,
 			provider: 'huggingface',
 			model: getResumeModel(),
 			useSecondaryKey: true,
+			forceDeterministicRetry: false,
 		});
 	} catch (hfError) {
 		console.warn('[RESUME] HuggingFace analysis failed or not configured:', hfError?.message || hfError);
 		try {
-			aiResult = await aiService.generate(analysisPrompt);
+			aiResult = await generateStructuredResumeAnalysis({
+				systemInstruction,
+				extractedText,
+				targetRole,
+				forceDeterministicRetry: false,
+			});
 		} catch (fallbackError) {
 			console.error('[RESUME] Fallback provider also failed:', fallbackError?.message || fallbackError);
 			throw fallbackError;
@@ -174,15 +237,16 @@ const analyzeResumeFile = async (filePath, mimeType, targetRole = '') => {
 	}
 
 	if (!String(aiResult?.text || '').trim()) {
-		const retryPrompt = [
-			systemInstruction,
-			'Return ONLY valid JSON. Do not leave response empty.',
-			`RESUME_TEXT:\n${extractedText.slice(0, 12000)}`,
-		].join('\n\n');
-
 		const preferredProvider = aiResult?.providerUsed || undefined;
 		try {
-			aiResult = await aiService.generate(retryPrompt, preferredProvider ? { provider: preferredProvider, model: getResumeModel() } : undefined);
+			aiResult = await generateStructuredResumeAnalysis({
+				systemInstruction,
+				extractedText,
+				targetRole,
+				provider: preferredProvider,
+				model: preferredProvider === 'huggingface' ? getResumeModel() : undefined,
+				forceDeterministicRetry: true,
+			});
 		} catch (retryError) {
 			console.error('[RESUME] Retry attempt failed:', retryError?.message || retryError);
 			throw retryError;
@@ -205,6 +269,33 @@ const analyzeResumeFile = async (filePath, mimeType, targetRole = '') => {
 			parseWarning = 'AI response required lightweight JSON normalization before rendering.';
 		} catch (normalizationError) {
 			console.warn(`[RESUME] Lightweight normalization failed. ${normalizationError.message}`);
+			try {
+				const regeneratedResult = await generateStructuredResumeAnalysis({
+					systemInstruction,
+					extractedText,
+					targetRole,
+					provider: aiResult?.providerUsed,
+					model: aiResult?.modelUsed || (aiResult?.providerUsed === 'huggingface' ? getResumeModel() : undefined),
+					forceDeterministicRetry: true,
+				});
+				analysis = normalizeParsedAnalysis(parseAnalysisJson(regeneratedResult.text));
+				aiResult = regeneratedResult;
+				parseWarning = 'AI response required one strict regeneration pass before rendering.';
+			} catch (regenerationError) {
+				console.warn(`[RESUME] Strict regeneration failed. ${regenerationError.message}`);
+			}
+
+			if (analysis) {
+				return {
+					analysis,
+					structured,
+					parseWarning,
+					analysisRaw: aiResult.text,
+					providerUsed: aiResult.providerUsed,
+					modelUsed: aiResult.modelUsed,
+				};
+			}
+
 			try {
 				const repairedText = await repairAnalysisJson(
 					aiResult.text,
@@ -324,4 +415,9 @@ exports.analyzeResume = async (req, res) => {
 			message: error?.message || 'Failed to analyze resume'
 		});
 	}
+};
+
+exports.__testables = {
+	parseAnalysisJson,
+	normalizeParsedAnalysis,
 };

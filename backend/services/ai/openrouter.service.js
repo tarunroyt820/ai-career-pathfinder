@@ -31,7 +31,7 @@ const buildRequestBody = (prompt, model, options = {}) => ({
     model,
     messages: buildMessages(prompt, options),
     reasoning: { enabled: String(process.env.OPENROUTER_REASONING_ENABLED || 'true').toLowerCase() === 'true' },
-    temperature: Number(process.env.OPENROUTER_TEMPERATURE || options.temperature || 1),
+    temperature: Number(options.temperature ?? process.env.OPENROUTER_TEMPERATURE ?? 1),
     max_tokens: Number(process.env.OPENROUTER_MAX_TOKENS || options.maxTokens || 4096),
     top_p: Number(process.env.OPENROUTER_TOP_P || options.topP || 1),
     stream: Boolean(options.stream),

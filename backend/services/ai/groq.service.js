@@ -84,17 +84,20 @@ const generateResponse = async (prompt, options = {}) => {
             try {
                 const client = getClient(apiKey);
                 const model = selectedModel;
-                const requestBody = {
-                    model,
-                    messages: [
+                const messages = Array.isArray(options.messages) && options.messages.length > 0
+                    ? options.messages
+                    : [
                         {
                             role: "system",
                             content: "You are an expert AI Career Advisor. Always provide structured, clear, and practical career guidance. Suggest 2-3 suitable career paths based on user input, explain why they fit, list required skills, and provide a simple step-by-step learning roadmap. Keep responses concise, personalized, and easy to understand."
                         },
                         { role: "user", content: prompt }
-                    ],
-                    temperature: Number(process.env.GROQ_TEMPERATURE || 1.2),
-                    max_completion_tokens: Number(process.env.GROQ_MAX_COMPLETION_TOKENS || 4096),
+                    ];
+                const requestBody = {
+                    model,
+                    messages,
+                    temperature: Number(options.temperature ?? process.env.GROQ_TEMPERATURE ?? 1.2),
+                    max_completion_tokens: Number(options.maxTokens || process.env.GROQ_MAX_COMPLETION_TOKENS || 4096),
                     top_p: 1,
                 };
 

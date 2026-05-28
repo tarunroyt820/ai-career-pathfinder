@@ -61,7 +61,7 @@ const toProviderError = (error) => {
 };
 
 const buildChatOptions = (prompt, model, maxTokensOverride, options = {}) => {
-    const temperature = Number(process.env.HF_TEMPERATURE || 0.6);
+    const temperature = Number(options.temperature ?? process.env.HF_TEMPERATURE ?? 0.6);
     const maxTokens = Number(maxTokensOverride || process.env.HF_MAX_NEW_TOKENS || 1200);
     const messages = Array.isArray(options.messages) && options.messages.length > 0
         ? options.messages
