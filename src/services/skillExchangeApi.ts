@@ -58,6 +58,29 @@ export interface TradeRequest {
   createdAt: string;
 }
 
+export interface GlobalLearningRequest {
+  _id: string;
+  createdBy: { _id: string; fullName?: string } | string;
+  acceptedBy?: { _id: string; fullName?: string } | string | null;
+  acceptedTradeRequestId?: {
+    _id?: string;
+    status?: string;
+    proposedCredits?: number;
+    proposedDuration?: number;
+  } | null;
+  skillWanted: string;
+  goalTitle: string;
+  description: string;
+  experienceLevel: "beginner" | "intermediate" | "advanced";
+  preferredDuration: number;
+  budgetCredits: number;
+  visibility: "matched_only";
+  status: "open" | "accepted" | "cancelled" | "expired" | "closed";
+  expiresAt?: string;
+  closedAt?: string | null;
+  createdAt: string;
+}
+
 export interface TradeRequestMessage {
   _id: string;
   tradeRequestId: string;
@@ -218,6 +241,74 @@ export const createTradeRequest = async (payload: {
     const response = await axios.post<{ request: TradeRequest }>(`${BASE_URL}/requests`, payload, {
       headers: getAuthHeader(),
     });
+    return response.data.request;
+  } catch (error) {
+    throw new Error(parseApiError(error));
+  }
+};
+
+export const createGlobalLearningRequest = async (payload: {
+  skillWanted: string;
+  goalTitle: string;
+  description?: string;
+  experienceLevel: "beginner" | "intermediate" | "advanced";
+  preferredDuration: number;
+  budgetCredits?: number;
+}): Promise<{ request: GlobalLearningRequest; recipientsNotified: number }> => {
+  try {
+    const response = await axios.post<{ request: GlobalLearningRequest; recipientsNotified: number }>(
+      `${BASE_URL}/global-learning-requests`,
+      payload,
+      { headers: getAuthHeader() },
+    );
+    return response.data;
+  } catch (error) {
+    throw new Error(parseApiError(error));
+  }
+};
+
+export const getGlobalLearningRequests = async (): Promise<GlobalLearningRequest[]> => {
+  try {
+    const response = await axios.get<{ requests: GlobalLearningRequest[] }>(`${BASE_URL}/global-learning-requests`, {
+      headers: getAuthHeader(),
+    });
+    return response.data.requests || [];
+  } catch (error) {
+    throw new Error(parseApiError(error));
+  }
+};
+
+export const getMyGlobalLearningRequests = async (): Promise<GlobalLearningRequest[]> => {
+  try {
+    const response = await axios.get<{ requests: GlobalLearningRequest[] }>(`${BASE_URL}/global-learning-requests/mine`, {
+      headers: getAuthHeader(),
+    });
+    return response.data.requests || [];
+  } catch (error) {
+    throw new Error(parseApiError(error));
+  }
+};
+
+export const acceptGlobalLearningRequest = async (requestId: string): Promise<{ request: GlobalLearningRequest; tradeRequest?: TradeRequest }> => {
+  try {
+    const response = await axios.patch<{ request: GlobalLearningRequest; tradeRequest?: TradeRequest }>(
+      `${BASE_URL}/global-learning-requests/${requestId}/accept`,
+      {},
+      { headers: getAuthHeader() },
+    );
+    return response.data;
+  } catch (error) {
+    throw new Error(parseApiError(error));
+  }
+};
+
+export const cancelGlobalLearningRequest = async (requestId: string): Promise<GlobalLearningRequest> => {
+  try {
+    const response = await axios.patch<{ request: GlobalLearningRequest }>(
+      `${BASE_URL}/global-learning-requests/${requestId}/cancel`,
+      {},
+      { headers: getAuthHeader() },
+    );
     return response.data.request;
   } catch (error) {
     throw new Error(parseApiError(error));

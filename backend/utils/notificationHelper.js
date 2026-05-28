@@ -10,7 +10,10 @@ const defaultMessageByType = {
     noshow_alert: 'A no-show report has been filed.',
     dispute_filed: 'A dispute has been filed for one of your exchanges.',
     credits_awarded: 'Credits were added to your account.',
-    exchange_completed: 'Your exchange has been marked completed.'
+    exchange_completed: 'Your exchange has been marked completed.',
+    global_learning_request: 'A community learning request matches your skills.',
+    global_learning_request_accepted: 'Someone accepted your community learning request.',
+    global_learning_request_closed: 'A community learning request was closed.'
 };
 
 const sendNotification = async (userId, type, data = {}, deps = {}) => {

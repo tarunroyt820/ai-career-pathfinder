@@ -14,6 +14,7 @@ import {
 import { getCurrentUserIdFromToken } from "@/utils/authToken";
 import {
   getAgreements,
+  getGlobalLearningRequests,
   getMatches,
   getNotifications,
   getSkillProfile,
@@ -36,6 +37,7 @@ import SearchProfiles from "@/components/skill-exchange/SearchProfiles";
 type OverviewState = {
   profile: SkillProfile | null;
   matchesCount: number;
+  globalLearningRequestsCount: number;
   agreements: Agreement[];
   sentRequests: TradeRequest[];
   receivedRequests: TradeRequest[];
@@ -45,6 +47,7 @@ type OverviewState = {
 const fallbackState: OverviewState = {
   profile: null,
   matchesCount: 0,
+  globalLearningRequestsCount: 0,
   agreements: [],
   sentRequests: [],
   receivedRequests: [],
@@ -66,6 +69,7 @@ export function SkillExchangeShell() {
         userId ? getSkillProfile(userId) : Promise.resolve(null),
         getMatches("", 1, 6),
         getAgreements(),
+        getGlobalLearningRequests(),
         getTradeRequests("sent"),
         getTradeRequests("received"),
         getNotifications(),
@@ -75,6 +79,7 @@ export function SkillExchangeShell() {
         profileResult,
         matchesResult,
         agreementsResult,
+        globalLearningRequestsResult,
         sentRequestsResult,
         receivedRequestsResult,
         notificationsResult,
@@ -83,6 +88,7 @@ export function SkillExchangeShell() {
       setState({
         profile: profileResult.status === "fulfilled" ? profileResult.value : null,
         matchesCount: matchesResult.status === "fulfilled" ? matchesResult.value.total || normalizeList(matchesResult.value.matches).length : 0,
+        globalLearningRequestsCount: globalLearningRequestsResult.status === "fulfilled" ? normalizeList(globalLearningRequestsResult.value).length : 0,
         agreements: agreementsResult.status === "fulfilled" ? normalizeList(agreementsResult.value) : [],
         sentRequests: sentRequestsResult.status === "fulfilled" ? normalizeList(sentRequestsResult.value) : [],
         receivedRequests: receivedRequestsResult.status === "fulfilled" ? normalizeList(receivedRequestsResult.value) : [],
@@ -116,6 +122,12 @@ export function SkillExchangeShell() {
           description: "Review compatible people and send a skill trade proposal.",
           to: "/matches",
           icon: Compass,
+        },
+        {
+          title: "Ask the community",
+          description: "Post a learning goal and notify matched mentors without offering a skill first.",
+          to: "/learning-requests",
+          icon: Sparkles,
         },
         {
           title: "Handle open requests",
@@ -158,6 +170,7 @@ export function SkillExchangeShell() {
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[
               { label: "Matches", value: state.matchesCount, accent: "text-sky-300", icon: Compass },
+              { label: "Learning Board", value: state.globalLearningRequestsCount, accent: "text-teal-200", icon: Sparkles },
               { label: "Active Trades", value: activeAgreements.length, accent: "text-emerald-300", icon: CalendarClock },
               { label: "Pending Requests", value: pendingReceived.length, accent: "text-amber-200", icon: Repeat },
               { label: "Unread Alerts", value: unreadNotifications.length, accent: "text-violet-200", icon: Bell },

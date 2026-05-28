@@ -50,6 +50,7 @@ export const formatRelativeDate = (value?: string): string => {
 };
 
 export const getNotificationRoute = (type: string): string => {
+  if (type.includes("global_learning_request")) return "/learning-requests";
   if (type.includes("request")) return "/requests";
   if (type.includes("message")) return "/messages";
   if (type.includes("session") || type.includes("exchange") || type.includes("noshow")) return "/exchanges";
@@ -58,6 +59,14 @@ export const getNotificationRoute = (type: string): string => {
 };
 
 export const getNotificationTone = (type: string): { dot: string; chip: string; label: string } => {
+  if (type.includes("global_learning_request")) {
+    return {
+      dot: "bg-teal-300",
+      chip: "bg-teal-500/12 text-teal-100 border border-teal-400/20",
+      label: "Community",
+    };
+  }
+
   if (type.includes("request")) {
     return {
       dot: "bg-sky-400",

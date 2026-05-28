@@ -20,6 +20,7 @@ const SkillAvailabilityPage = lazy(() => import("./components/skill-exchange/Ski
 const SkillMatchesPage = lazy(() => import("./components/skill-exchange/SkillMatchesPage").then((module) => ({ default: module.SkillMatchesPage })));
 const SkillPublicProfilePage = lazy(() => import("./components/skill-exchange/SkillPublicProfilePage").then((module) => ({ default: module.SkillPublicProfilePage })));
 const SkillRequestsPage = lazy(() => import("./components/skill-exchange/SkillRequestsPage").then((module) => ({ default: module.SkillRequestsPage })));
+const GlobalLearningRequestsPage = lazy(() => import("./components/skill-exchange/GlobalLearningRequestsPage").then((module) => ({ default: module.GlobalLearningRequestsPage })));
 const SkillExchangesPage = lazy(() => import("./components/skill-exchange/SkillExchangesPage").then((module) => ({ default: module.SkillExchangesPage })));
 const SkillNotificationsPage = lazy(() => import("./components/skill-exchange/SkillNotificationsPage").then((module) => ({ default: module.SkillNotificationsPage })));
 const SkillMessagesPage = lazy(() => import("./components/skill-exchange/SkillMessagesPage").then((module) => ({ default: module.SkillMessagesPage })));
@@ -98,6 +99,7 @@ export default function App() {
                             <Route path="/admin" element={<AdminDashboard />} />
                         </Route>
                         <Route path="/requests" element={<SkillRequestsPage />} />
+                        <Route path="/learning-requests" element={<GlobalLearningRequestsPage />} />
                         <Route path="/exchanges" element={<SkillExchangesPage />} />
                         <Route path="/messages" element={<SkillMessagesPage />} />
                         <Route path="/notifications" element={<SkillNotificationsPage />} />
