@@ -29,6 +29,9 @@ const agreementMessageRoutes = require('./routes/agreementMessageRoutes');
 const adminAnalyticsRoutes = require('./routes/adminAnalyticsRoutes');
 const adminUserRoutes = require('./routes/adminUserRoutes');
 const pushSubscriptionRoutes = require('./routes/pushSubscriptionRoutes');
+const courseRoutes = require('./routes/courseRoutes');
+const courseCategoryRoutes = require('./routes/courseCategoryRoutes');
+const adminCourseRoutes = require('./routes/adminCourseRoutes');
 
 const app = express();
 
@@ -197,8 +200,11 @@ app.use('/api/reviews', reviewsRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/global-learning-requests', globalLearningRequestsRoutes);
 app.use('/api/discovery', discoveryRoutes);
+app.use('/api/courses', courseRoutes);
+app.use('/api/course-categories', courseCategoryRoutes);
 app.use('/api/admin/analytics', adminAnalyticsRoutes);
 app.use('/api/admin/users', adminUserRoutes);
+app.use('/api/admin', adminCourseRoutes);
 app.use('/api/push-subscriptions', pushSubscriptionRoutes);
 
 // Global Error Handler

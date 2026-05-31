@@ -19,6 +19,7 @@ const SkillProfileSetupPage = lazy(() => import("./components/skill-exchange/Ski
 const SkillAvailabilityPage = lazy(() => import("./components/skill-exchange/SkillAvailabilityPage").then((module) => ({ default: module.SkillAvailabilityPage })));
 const SkillMatchesPage = lazy(() => import("./components/skill-exchange/SkillMatchesPage").then((module) => ({ default: module.SkillMatchesPage })));
 const SkillPublicProfilePage = lazy(() => import("./components/skill-exchange/SkillPublicProfilePage").then((module) => ({ default: module.SkillPublicProfilePage })));
+const ProfileEditorPage = lazy(() => import("./pages/ProfileEditorPage").then((module) => ({ default: module.default })));
 const SkillRequestsPage = lazy(() => import("./components/skill-exchange/SkillRequestsPage").then((module) => ({ default: module.SkillRequestsPage })));
 const GlobalLearningRequestsPage = lazy(() => import("./components/skill-exchange/GlobalLearningRequestsPage").then((module) => ({ default: module.GlobalLearningRequestsPage })));
 const SkillExchangesPage = lazy(() => import("./components/skill-exchange/SkillExchangesPage").then((module) => ({ default: module.SkillExchangesPage })));
@@ -26,6 +27,10 @@ const SkillNotificationsPage = lazy(() => import("./components/skill-exchange/Sk
 const SkillMessagesPage = lazy(() => import("./components/skill-exchange/SkillMessagesPage").then((module) => ({ default: module.SkillMessagesPage })));
 const FindPeople = lazy(() => import("./pages/FindPeople"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const CoursesPage = lazy(() => import("./pages/CoursesPage"));
+const CourseDetailsPage = lazy(() => import("./pages/CourseDetailsPage"));
+const AdminCoursesPage = lazy(() => import("./pages/AdminCoursesPage"));
+const AdminCourseFormPage = lazy(() => import("./pages/AdminCourseFormPage"));
 const PricingSection = lazy(() => import("./components/landing/PricingSection").then((module) => ({ default: module.PricingSection })));
 const FeaturesSection = lazy(() => import("./components/landing/FeaturesSection").then((module) => ({ default: module.FeaturesSection })));
 const HowItWorksSection = lazy(() => import("./components/landing/HowItWorksSection").then((module) => ({ default: module.HowItWorksSection })));
@@ -85,6 +90,8 @@ export default function App() {
                     <Route path="/forgot-password" element={<PublicRoute><ForgotPasswordPage /></PublicRoute>} />
                     <Route path="/reset-password" element={<ResetPasswordPage />} />
                     <Route path="/terms" element={<TermsPage />} />
+                    <Route path="/courses" element={<CoursesPage />} />
+                    <Route path="/courses/:slug" element={<CourseDetailsPage />} />
                     <Route path="/profile/:userId" element={<SkillPublicProfilePage />} />
 
                     {/* Protected Dashboard Routes */}
@@ -92,11 +99,15 @@ export default function App() {
                         <Route path="/dashboard/*" element={<Dashboard />} />
                         <Route path="/onboarding" element={<OnboardingFlow />} />
                         <Route path="/profile/skills" element={<SkillProfileSetupPage />} />
+                        <Route path="/profile/edit" element={<ProfileEditorPage />} />
                         <Route path="/profile/availability" element={<SkillAvailabilityPage />} />
                         <Route path="/matches" element={<SkillMatchesPage />} />
                         <Route path="/discover" element={<FindPeople />} />
                         <Route element={<AdminRoute />}>
                             <Route path="/admin" element={<AdminDashboard />} />
+                            <Route path="/admin/courses" element={<AdminCoursesPage />} />
+                            <Route path="/admin/courses/new" element={<AdminCourseFormPage />} />
+                            <Route path="/admin/courses/:id/edit" element={<AdminCourseFormPage />} />
                         </Route>
                         <Route path="/requests" element={<SkillRequestsPage />} />
                         <Route path="/learning-requests" element={<GlobalLearningRequestsPage />} />

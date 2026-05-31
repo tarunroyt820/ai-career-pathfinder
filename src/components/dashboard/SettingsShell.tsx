@@ -28,6 +28,7 @@ import {
 } from "@/services/enhancedProfileApi";
 import { deleteAccount, uploadProfilePhoto } from "@/services/profileApi";
 import { deleteHistory as deleteAIHistory } from "@/services/aiApi";
+import { getCurrentUserIdFromToken } from "@/utils/authToken";
 
 type TabId = "profile" | "upgrade" | "notifications" | "account" | "privacy";
 
@@ -103,11 +104,13 @@ export function SettingsShell() {
   const [activeTab, setActiveTab] = useState<TabId>("profile");
   const [toggles, setToggles] = useState<ToggleState>(initialToggles);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const currentUserId = useMemo(() => getCurrentUserIdFromToken(), []);
 
   useEffect(() => {
     getEnhancedProfile().then((data) => {
       setProfile(data);
       setSavedProfile(data);
+      setToggles((current) => ({ ...current, publicProfile: data.isProfilePublic ?? true }));
     });
   }, []);
 
@@ -126,6 +129,59 @@ export function SettingsShell() {
     value: string | string[],
   ) => {
     setProfile((current) => (current ? { ...current, [field]: value } : null));
+  };
+
+  // Education and projects helpers
+  const addEducation = () => {
+    setProfile((current) =>
+      current
+        ? { ...current, education: [...(current.education || []), { college: '', degree: '', graduationYear: '' }] }
+        : current,
+    );
+  };
+
+  const updateEducation = (index: number, key: keyof NonNullable<EnhancedProfile['education']>[0], value: string) => {
+    setProfile((current) => {
+      if (!current) return current;
+      const arr = [...(current.education || [])];
+      arr[index] = { ...(arr[index] || {}), [key]: value } as any;
+      return { ...current, education: arr };
+    });
+  };
+
+  const removeEducation = (index: number) => {
+    setProfile((current) => {
+      if (!current) return current;
+      const arr = [...(current.education || [])];
+      arr.splice(index, 1);
+      return { ...current, education: arr };
+    });
+  };
+
+  const addProject = () => {
+    setProfile((current) =>
+      current
+        ? { ...current, projects: [...(current.projects || []), { title: '', description: '', link: '', startYear: '', endYear: '' }] }
+        : current,
+    );
+  };
+
+  const updateProject = (index: number, key: string, value: string) => {
+    setProfile((current) => {
+      if (!current) return current;
+      const arr = [...(current.projects || [])];
+      arr[index] = { ...(arr[index] || {}), [key]: value } as any;
+      return { ...current, projects: arr };
+    });
+  };
+
+  const removeProject = (index: number) => {
+    setProfile((current) => {
+      if (!current) return current;
+      const arr = [...(current.projects || [])];
+      arr.splice(index, 1);
+      return { ...current, projects: arr };
+    });
   };
 
   const handleSave = async () => {
@@ -153,6 +209,20 @@ export function SettingsShell() {
     setToggles((current) => ({ ...current, [key]: !current[key] }));
   };
 
+  const handlePublicProfileToggle = () => {
+    setToggles((current) => ({ ...current, publicProfile: !current.publicProfile }));
+    setProfile((current) => (current ? { ...current, isProfilePublic: !toggles.publicProfile } : current));
+  };
+
+  const handleVisibilityToggle = (key: keyof NonNullable<EnhancedProfile['visibility']>) => {
+    setProfile((current) => {
+      if (!current) return current;
+      const currVis = current.visibility || {};
+      const updated = { ...(current.visibility || {}), [key]: !currVis[key] };
+      return { ...current, visibility: updated };
+    });
+  };
+
   const getPhotoUrl = (photoUrl?: string) => {
     if (!photoUrl) return "";
     if (/^https?:\/\//i.test(photoUrl)) return photoUrl;
@@ -165,6 +235,46 @@ export function SettingsShell() {
   ) => {
     const file = event.target.files?.[0];
     if (!file) return;
+
+    // Client-side validations
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/webp'];
+    const maxBytes = 3 * 1024 * 1024; // 3 MB
+    const maxWidth = 3000;
+    const maxHeight = 3000;
+
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Unsupported file type. Use PNG, JPEG or WEBP.');
+      event.target.value = '';
+      return;
+    }
+
+    if (file.size > maxBytes) {
+      toast.error('File too large. Maximum size is 3 MB.');
+      event.target.value = '';
+      return;
+    }
+
+    const checkImageDimensions = () =>
+      new Promise<void>((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          if (img.width > maxWidth || img.height > maxHeight) {
+            reject(new Error('Image dimensions are too large. Maximum 3000x3000px.'));
+          } else {
+            resolve();
+          }
+        };
+        img.onerror = () => reject(new Error('Failed to read image file'));
+        img.src = URL.createObjectURL(file);
+      });
+
+    try {
+      await checkImageDimensions();
+    } catch (err: any) {
+      toast.error(err?.message || 'Invalid image');
+      event.target.value = '';
+      return;
+    }
 
     try {
       const updated = await uploadProfilePhoto(file);
@@ -435,6 +545,79 @@ export function SettingsShell() {
                   </p>
                 </div>
 
+                <div className="rounded-xl border border-[rgba(115,195,255,0.22)] bg-[rgba(115,195,255,0.08)] p-4">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <p className="text-sm font-bold text-white">Public profile visibility</p>
+                      <p className="text-sm text-[rgba(189,216,233,0.62)]">
+                        Let other users view your public profile and discover you in the network.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      aria-pressed={toggles.publicProfile}
+                      onClick={handlePublicProfileToggle}
+                      className={`relative h-6 w-11 rounded-full transition ${
+                        toggles.publicProfile ? "bg-[#73c3ff]" : "bg-[rgba(255,255,255,0.18)]"
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-1 h-4 w-4 rounded-full bg-white transition ${
+                          toggles.publicProfile ? "left-6" : "left-1"
+                        }`}
+                      />
+                    </button>
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    <Button
+                      variant="outline"
+                      className="h-10 rounded-xl border-[rgba(255,255,255,0.12)] px-4 text-xs font-black uppercase tracking-widest"
+                      onClick={() => currentUserId && navigate(`/profile/${currentUserId}`)}
+                      disabled={!currentUserId}
+                    >
+                      Preview public profile
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-[rgba(255,255,255,0.04)] p-4">
+                  <p className="mb-3 text-sm font-bold text-white">Field-level privacy</p>
+                  <p className="mb-4 text-xs text-[rgba(189,216,233,0.62)]">Choose which profile fields are visible on your public profile.</p>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {[
+                      { key: 'profilePhotoUrl', label: 'Profile Photo' },
+                      { key: 'jobTitle', label: 'Job Title' },
+                      { key: 'education', label: 'Education' },
+                      { key: 'skills', label: 'Skills' },
+                      { key: 'tools', label: 'Tools' },
+                      { key: 'certifications', label: 'Certifications' },
+                      { key: 'aiSummary', label: 'AI Summary' },
+                      { key: 'links', label: 'Links' },
+                    ].map((item) => (
+                      <div key={item.key} className="flex items-center justify-between">
+                        <div className="text-sm font-semibold text-[rgba(189,216,233,0.78)]">{item.label}</div>
+                        <button
+                          type="button"
+                          onClick={() => handleVisibilityToggle(item.key as any)}
+                          className={`relative h-6 w-11 rounded-full transition ${
+                            profile.visibility && profile.visibility[item.key as keyof typeof profile.visibility]
+                              ? 'bg-[#73c3ff]'
+                              : 'bg-[rgba(255,255,255,0.18)]'
+                          }`}
+                        >
+                          <span
+                            className={`absolute top-1 h-4 w-4 rounded-full bg-white transition ${
+                              profile.visibility && profile.visibility[item.key as keyof typeof profile.visibility]
+                                ? 'left-6'
+                                : 'left-1'
+                            }`}
+                          />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-1.5">
                     <label className={labelClass}>Display Name</label>
@@ -493,6 +676,63 @@ export function SettingsShell() {
                         handleFieldChange("careerGoal", event.target.value)
                       }
                     />
+                  </div>
+                </div>
+
+                <div className="border-t border-[rgba(255,255,255,0.08)] pt-5">
+                  <p className="mb-3 text-sm font-bold text-white">Education</p>
+                  <div className="space-y-3">
+                    {(profile.education || []).map((edu, idx) => (
+                      <div key={idx} className="rounded-xl border border-[rgba(255,255,255,0.04)] p-3">
+                        <div className="grid gap-2 md:grid-cols-3">
+                          <input
+                            className={fieldBaseClass}
+                            placeholder="College"
+                            value={edu.college || ''}
+                            onChange={(e) => updateEducation(idx, 'college', e.target.value)}
+                          />
+                          <input
+                            className={fieldBaseClass}
+                            placeholder="Degree"
+                            value={edu.degree || ''}
+                            onChange={(e) => updateEducation(idx, 'degree', e.target.value)}
+                          />
+                          <input
+                            className={fieldBaseClass}
+                            placeholder="Graduation Year"
+                            value={edu.graduationYear || ''}
+                            onChange={(e) => updateEducation(idx, 'graduationYear', e.target.value)}
+                          />
+                        </div>
+                        <div className="mt-2 flex justify-end">
+                          <Button variant="outline" onClick={() => removeEducation(idx)}>Remove</Button>
+                        </div>
+                      </div>
+                    ))}
+                    <div>
+                      <Button onClick={addEducation}>Add Education</Button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t border-[rgba(255,255,255,0.08)] pt-5">
+                  <p className="mb-3 text-sm font-bold text-white">Projects</p>
+                  <div className="space-y-3">
+                    {(profile.projects || []).map((p: any, idx: number) => (
+                      <div key={idx} className="rounded-xl border border-[rgba(255,255,255,0.04)] p-3">
+                        <div className="space-y-2">
+                          <input className={fieldBaseClass} placeholder="Title" value={p.title || ''} onChange={(e) => updateProject(idx, 'title', e.target.value)} />
+                          <input className={fieldBaseClass} placeholder="Link" value={p.link || ''} onChange={(e) => updateProject(idx, 'link', e.target.value)} />
+                          <textarea className={`${fieldBaseClass} min-h-[64px]`} placeholder="Short description" value={p.description || ''} onChange={(e) => updateProject(idx, 'description', e.target.value)} />
+                        </div>
+                        <div className="mt-2 flex justify-end">
+                          <Button variant="outline" onClick={() => removeProject(idx)}>Remove</Button>
+                        </div>
+                      </div>
+                    ))}
+                    <div>
+                      <Button onClick={addProject}>Add Project</Button>
+                    </div>
                   </div>
                 </div>
 
@@ -945,7 +1185,7 @@ export function SettingsShell() {
                     <button
                       type="button"
                       aria-pressed={toggles[item.key]}
-                      onClick={() => toggleValue(item.key)}
+                      onClick={() => (item.key === "publicProfile" ? handlePublicProfileToggle() : toggleValue(item.key))}
                       className={`relative h-6 w-11 rounded-full transition ${
                         toggles[item.key]
                           ? "bg-[#73c3ff]"

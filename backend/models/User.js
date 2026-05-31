@@ -63,12 +63,73 @@ const UserSchema = new mongoose.Schema({
         type: String,
         default: ''
     },
-    education: {
-        college: { type: String, default: '' },
-        degree: { type: String, default: '' },
-        graduationYear: { type: String, default: '' }
+    targetRole: {
+        type: String,
+        default: ''
     },
+    yearsOfExperience: {
+        type: String,
+        default: ''
+    },
+    preferredIndustry: {
+        type: String,
+        default: ''
+    },
+    workPreference: {
+        type: String,
+        enum: ['remote', 'hybrid', 'onsite', 'flexible', ''],
+        default: ''
+    },
+    preferredLocation: {
+        type: String,
+        default: ''
+    },
+    portfolioUrl: {
+        type: String,
+        default: ''
+    },
+    linkedinUrl: {
+        type: String,
+        default: ''
+    },
+    githubUrl: {
+        type: String,
+        default: ''
+    },
+    education: [
+        {
+            college: { type: String, default: '' },
+            degree: { type: String, default: '' },
+            graduationYear: { type: String, default: '' }
+        }
+    ],
+
+    projects: [
+        {
+            title: { type: String, default: '' },
+            description: { type: String, default: '' },
+            link: { type: String, default: '' },
+            startYear: { type: String, default: '' },
+            endYear: { type: String, default: '' }
+        }
+    ],
     skills: {
+        type: [String],
+        default: []
+    },
+    tools: {
+        type: [String],
+        default: []
+    },
+    certifications: {
+        type: [String],
+        default: []
+    },
+    strengths: {
+        type: [String],
+        default: []
+    },
+    improvementAreas: {
         type: [String],
         default: []
     },
@@ -146,6 +207,29 @@ const UserSchema = new mongoose.Schema({
     profilePhotoUrl: {
         type: String,
         default: ''
+    },
+    isProfilePublic: {
+        type: Boolean,
+        default: true,
+        index: true
+    },
+    visibility: {
+        jobTitle: { type: Boolean, default: true },
+        education: { type: Boolean, default: true },
+        skills: { type: Boolean, default: true },
+        profilePhotoUrl: { type: Boolean, default: true },
+        tools: { type: Boolean, default: true },
+        certifications: { type: Boolean, default: true },
+        links: { type: Boolean, default: true },
+        aiSummary: { type: Boolean, default: true },
+        preferredLocation: { type: Boolean, default: true },
+        careerGoal: { type: Boolean, default: true },
+        targetRole: { type: Boolean, default: true },
+        strengths: { type: Boolean, default: true },
+        improvementAreas: { type: Boolean, default: true },
+        yearsOfExperience: { type: Boolean, default: true },
+        preferredIndustry: { type: Boolean, default: true },
+        workPreference: { type: Boolean, default: true },
     },
     isSuspended: {
         type: Boolean,

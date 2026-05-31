@@ -16,6 +16,20 @@ const toBaseProfile = (profile: EnhancedProfile): UserProfile => ({
   careerGoal: profile.careerGoal,
   jobTitle: profile.jobTitle,
   experienceLevel: profile.experienceLevel,
+  targetRole: profile.targetRole,
+  yearsOfExperience: profile.yearsOfExperience,
+  preferredIndustry: profile.preferredIndustry,
+  workPreference: profile.workPreference,
+  preferredLocation: profile.preferredLocation,
+  portfolioUrl: profile.portfolioUrl,
+  linkedinUrl: profile.linkedinUrl,
+  githubUrl: profile.githubUrl,
+  certifications: profile.certifications,
+  tools: profile.tools,
+  strengths: profile.strengths,
+  improvementAreas: profile.improvementAreas,
+  aiSummary: profile.aiSummary,
+  visibility: profile.visibility,
 });
 
 const toTemporaryFields = (profile: EnhancedProfile): TemporaryAIProfileFields => ({

@@ -1,6 +1,10 @@
 import { getEnhancedProfile } from "@/services/enhancedProfileApi";
 import { EnhancedProfile } from "@/types/enhancedProfile";
 import { useState, useEffect } from "react";
+import { getPublicProfile } from "@/services/profileApi";
+import { getSkillProfile, getReviews, Review, SkillProfile } from "@/services/skillExchangeApi";
+import { RequestExchangeModal } from "@/components/skill-exchange/RequestExchangeModal";
+import type { UserProfile } from "@/types/profile";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -23,14 +27,45 @@ import {
     Target
 } from "lucide-react";
 
-export function PublicProfile() {
-    const [profile, setProfile] = useState<EnhancedProfile | null>(null);
+export function PublicProfile({ userId }: { userId?: string }) {
+    const [profile, setProfile] = useState<any | null>(null);
+    const [skillProfile, setSkillProfile] = useState<SkillProfile | null>(null);
+    const [reviews, setReviews] = useState<Review[]>([]);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        getEnhancedProfile().then(setProfile);
-    }, []);
+        let mounted = true;
+        const load = async () => {
+            setLoading(true);
+            try {
+                if (userId) {
+                    const [pub, skill, revs] = await Promise.all([
+                        getPublicProfile(userId),
+                        getSkillProfile(userId),
+                        getReviews(userId),
+                    ]);
+                    if (!mounted) return;
+                    setProfile(pub as UserProfile);
+                    setSkillProfile(skill);
+                    setReviews(revs);
+                } else {
+                    const enhanced = await getEnhancedProfile();
+                    if (!mounted) return;
+                    setProfile(enhanced as EnhancedProfile);
+                }
+            } catch (err) {
+                // swallow errors; caller may show fallback
+            } finally {
+                if (mounted) setLoading(false);
+            }
+        };
+        load();
+        return () => {
+            mounted = false;
+        };
+    }, [userId]);
 
-    if (!profile) {
+    if (loading || !profile) {
         return (
             <div className="flex h-96 w-full items-center justify-center">
                 <div className="h-12 w-12 animate-spin rounded-2xl border-4 border-primary border-t-transparent"></div>
@@ -38,7 +73,7 @@ export function PublicProfile() {
         );
     }
 
-    const initials = profile.fullName?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || "JD";
+    const initials = (profile?.fullName || "").split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) || "JD";
 
     return (
         <div className="max-w-6xl mx-auto space-y-12 animate-in fade-in duration-1000">
@@ -73,8 +108,8 @@ export function PublicProfile() {
                                     Pro Tier
                                 </span>
                             </div>
-                            <p className="text-xl font-bold text-muted-foreground leading-none">
-                                {profile.jobTitle || "Nextaro Professional"}
+                                <p className="text-xl font-bold text-muted-foreground leading-none">
+                                {(profile.visibility?.jobTitle ?? true) ? (profile.jobTitle || "Nextaro Professional") : "Private"}
                             </p>
                             <div className="flex flex-wrap gap-5 pt-3">
                                 <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground uppercase tracking-widest">
@@ -83,7 +118,7 @@ export function PublicProfile() {
                                 </div>
                                 <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground uppercase tracking-widest">
                                     <Target className="h-4 w-4 text-primary" />
-                                    {profile.targetRole || "Target Role Pending"}
+                                    {(profile.visibility?.targetRole ?? true) ? (profile.targetRole || "Target Role Pending") : "Private"}
                                 </div>
                                 <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground uppercase tracking-widest">
                                     <Globe className="h-4 w-4 text-primary" />
@@ -179,27 +214,27 @@ export function PublicProfile() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="px-10 pb-10 space-y-8">
-                            {profile.education.college || profile.education.degree ? (
-                                <div className="flex gap-8 group">
-                                    <div className="h-20 w-20 rounded-3xl bg-muted/30 border border-border flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                                        <GraduationCap className="h-10 w-10 text-primary/50" />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <h3 className="text-2xl font-black text-foreground uppercase tracking-tight">
-                                            {profile.education.college || "Global University"}
-                                        </h3>
-                                        <p className="text-lg font-bold text-primary">
-                                            {profile.education.degree || "Bachelor of Science"}
-                                        </p>
-                                        <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-muted-foreground">
-                                            <Calendar className="h-4 w-4" />
-                                            Class of {profile.education.graduationYear || "2024"}
-                                        </div>
-                                    </div>
-                                </div>
-                            ) : (
-                                <p className="text-muted-foreground font-medium text-center py-10 opacity-50">Educational records not yet synchronized.</p>
-                            )}
+                                    {Array.isArray(profile.education) && profile.education.length > 0 ? (
+                                        profile.education.map((edu: any, i: number) => (
+                                            <div key={i} className="flex gap-8 group">
+                                                <div className="h-20 w-20 rounded-3xl bg-muted/30 border border-border flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                                                    <GraduationCap className="h-10 w-10 text-primary/50" />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <h3 className="text-2xl font-black text-foreground uppercase tracking-tight">
+                                                        {edu.college || "Global University"}
+                                                    </h3>
+                                                    <p className="text-lg font-bold text-primary">{edu.degree || "Bachelor of Science"}</p>
+                                                    <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-muted-foreground">
+                                                        <Calendar className="h-4 w-4" />
+                                                        Class of {edu.graduationYear || "2024"}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <p className="text-muted-foreground font-medium text-center py-10 opacity-50">Educational records not yet synchronized.</p>
+                                    )}
                         </CardContent>
                     </Card>
                 </div>
@@ -215,9 +250,9 @@ export function PublicProfile() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="px-8 pb-8">
-                            {profile.skills && profile.skills.length > 0 ? (
+                            {(profile.skills || []).length > 0 ? (
                                 <div className="flex flex-wrap gap-2.5">
-                                    {profile.skills.map((skill, index) => (
+                                    {(profile.skills || []).map((skill: string, index: number) => (
                                         <Badge
                                             key={index}
                                             className="px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-[0.1em] bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all cursor-default border-none shadow-sm"
@@ -245,7 +280,7 @@ export function PublicProfile() {
                             <div className="space-y-3">
                                 <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Tools</p>
                                 <div className="flex flex-wrap gap-2.5">
-                                    {profile.tools.length > 0 ? profile.tools.map((tool, index) => (
+                                        {(profile.tools || []).length > 0 ? (profile.tools || []).map((tool: string, index: number) => (
                                         <Badge
                                             key={index}
                                             className="rounded-2xl border-none bg-accent/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.1em] text-accent"
@@ -261,7 +296,7 @@ export function PublicProfile() {
                             <div className="space-y-3">
                                 <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Certifications</p>
                                 <div className="flex flex-wrap gap-2.5">
-                                    {profile.certifications.length > 0 ? profile.certifications.map((item, index) => (
+                                    {(profile.certifications || []).length > 0 ? (profile.certifications || []).map((item: string, index: number) => (
                                         <Badge
                                             key={index}
                                             className="rounded-2xl border-none bg-primary/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.1em] text-primary"
@@ -277,7 +312,7 @@ export function PublicProfile() {
                             <div className="space-y-3">
                                 <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Strengths</p>
                                 <div className="flex flex-wrap gap-2.5">
-                                    {profile.strengths.length > 0 ? profile.strengths.map((item, index) => (
+                                    {(profile.strengths || []).length > 0 ? (profile.strengths || []).map((item: string, index: number) => (
                                         <Badge
                                             key={index}
                                             className="rounded-2xl border-none bg-green-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.1em] text-green-500"
@@ -293,7 +328,7 @@ export function PublicProfile() {
                             <div className="space-y-3">
                                 <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Improvement Areas</p>
                                 <div className="flex flex-wrap gap-2.5">
-                                    {profile.improvementAreas.length > 0 ? profile.improvementAreas.map((item, index) => (
+                                    {(profile.improvementAreas || []).length > 0 ? (profile.improvementAreas || []).map((item: string, index: number) => (
                                         <Badge
                                             key={index}
                                             className="rounded-2xl border-none bg-amber-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.1em] text-amber-500"

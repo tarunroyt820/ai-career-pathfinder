@@ -5,6 +5,7 @@ import {
   ChevronLeft,
   Compass,
   FileText,
+  User,
   LayoutGrid,
   LogOut,
   Menu,
@@ -46,6 +47,7 @@ const primaryNavItems = [
 
 const secondaryNavItems = [
   { icon: FileText, label: "My Resume", id: "resume", path: "/dashboard/resume" },
+  { icon: User, label: "Edit Profile", id: "edit-profile", path: "/profile/edit" },
   { icon: Settings, label: "Settings", id: "settings", path: "/dashboard/settings" },
 ];
 
@@ -55,8 +57,9 @@ export function Dashboard() {
   const [profile, setProfile] = useState<UserProfile>({
     fullName: "Nextaro Explorer",
     email: "",
-    education: { college: "", degree: "", graduationYear: "" },
+    education: [{ college: "", degree: "", graduationYear: "" }],
     skills: [],
+    projects: [],
     careerGoal: "",
   });
   const [searchValue, setSearchValue] = useState("");
@@ -106,7 +109,10 @@ export function Dashboard() {
       : "JD";
 
   const adminNavItems = isAdmin
-    ? [{ icon: Shield, label: "Admin", id: "admin", path: "/admin" }]
+    ? [
+        { icon: BookOpen, label: "Courses", id: "admin-courses", path: "/admin/courses" },
+        { icon: Shield, label: "Admin", id: "admin", path: "/admin" },
+      ]
     : [];
 
   const allNavItems = [...primaryNavItems, ...secondaryNavItems, ...adminNavItems];
@@ -239,13 +245,22 @@ export function Dashboard() {
                       {profile.jobTitle || "Nextaro Explorer"}
                     </p>
                   </div>
-                  <button
-                    onClick={handleLogout}
-                    className="ml-auto rounded-[5px] p-1 text-[rgba(255,255,255,0.3)] transition hover:bg-[rgba(239,68,68,0.12)] hover:text-[#ef4444]"
-                    aria-label="Sign out"
-                  >
-                    <LogOut className="h-[15px] w-[15px]" />
-                  </button>
+                  <div className="ml-auto flex items-center gap-2">
+                    <button
+                      onClick={() => navigate('/profile/edit')}
+                      className="rounded-[6px] px-3 py-1 text-xs font-semibold bg-[rgba(255,255,255,0.04)] hover:bg-[rgba(255,255,255,0.06)]"
+                      aria-label="Edit profile"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={handleLogout}
+                      className="rounded-[5px] p-1 text-[rgba(255,255,255,0.3)] transition hover:bg-[rgba(239,68,68,0.12)] hover:text-[#ef4444]"
+                      aria-label="Sign out"
+                    >
+                      <LogOut className="h-[15px] w-[15px]" />
+                    </button>
+                  </div>
                 </>
               )}
             </div>

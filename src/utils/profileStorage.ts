@@ -5,16 +5,20 @@ const STORAGE_KEY = "nextro_user_profile";
 export const initialProfile: UserProfile = {
     fullName: "",
     email: "",
-    education: {
-        college: "",
-        degree: "",
-        graduationYear: "",
-    },
+    education: [
+        {
+            college: "",
+            degree: "",
+            graduationYear: "",
+        },
+    ],
     skills: [],
     careerGoal: "",
     jobTitle: "",
     experienceLevel: "beginner",
     profilePhotoUrl: "",
+    isProfilePublic: true,
+    projects: [],
 };
 
 export const loadProfile = (): UserProfile => {
