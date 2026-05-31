@@ -98,7 +98,7 @@ exports.getPublicProfile = async (req, res) => {
                     if (Array.isArray(mapTo)) {
                         for (const f of mapTo) delete safe[f];
                     } else {
-                        delete safe[mapTo as string];
+                        delete safe[mapTo];
                     }
                 }
             }

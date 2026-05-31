@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test('profile edit flow (integration)', async ({ page }) => {
   // Use the real backend: sign up and log in to get a token
   const apiBase = process.env.PLAYWRIGHT_API_BASE || 'http://localhost:5000';
-  const email = `e2e+${Date.now()}@example.com`;
+  const email = `e2e${Date.now()}@example.com`;
   const password = 'Test1234!';
 
   // Signup (email sending is disabled in dev by default)
@@ -39,7 +39,7 @@ test('profile edit flow (integration)', async ({ page }) => {
   await page.waitForSelector('text=System Settings', { timeout: 10000 });
 
   // Fill display name
-  await page.fill('input[placeholder="Display Name"], input[value^=""]', 'E2E Tester');
+  await page.getByRole('textbox').first().fill('E2E Tester');
 
   // Click Save Profile
   await page.click('button:has-text("Save Profile")');
