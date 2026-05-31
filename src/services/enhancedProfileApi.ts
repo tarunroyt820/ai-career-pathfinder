@@ -22,6 +22,7 @@ const toBaseProfile = (profile: EnhancedProfile): UserProfile => ({
   workPreference: profile.workPreference,
   preferredLocation: profile.preferredLocation,
   portfolioUrl: profile.portfolioUrl,
+  isProfilePublic: profile.isProfilePublic,
   linkedinUrl: profile.linkedinUrl,
   githubUrl: profile.githubUrl,
   certifications: profile.certifications,
