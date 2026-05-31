@@ -1,9 +1,13 @@
 import { test, expect } from '@playwright/test';
 
 const apiBase = process.env.PLAYWRIGHT_API_BASE || 'http://localhost:5000';
+const tinyPng = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO2X1vQAAAAASUVORK5CYII=',
+  'base64',
+);
 
 async function bootstrapSession(page: any, fullName: string) {
-  const email = `e2e${Date.now()}@example.com`;
+  const email = `e2e-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.com`;
   const password = 'Test1234!';
 
   // Signup (email sending is disabled in dev by default)
@@ -39,6 +43,33 @@ async function bootstrapSession(page: any, fullName: string) {
 async function openProfileEditor(page: any) {
   await page.goto('/profile/edit');
   await page.waitForSelector('text=System Settings', { timeout: 10000 });
+}
+
+async function mockPublicProfileDependencies(page: any, userId: string) {
+  await page.route(`**/api/skills/${userId}`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        profile: {
+          userId,
+          skillsOffered: [],
+          skillsWanted: [],
+          bio: 'Public profile bio',
+          hourlyRate: 0,
+          isActive: true,
+        },
+      }),
+    });
+  });
+
+  await page.route(`**/api/reviews/${userId}`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ reviews: [] }),
+    });
+  });
 }
 
 test('profile edit flow (integration)', async ({ page }) => {
@@ -77,5 +108,43 @@ test('privacy toggle persists on real backend', async ({ page }) => {
   await openProfileEditor(page);
   await expect(page.locator('button[aria-pressed]').first()).toHaveAttribute('aria-pressed', 'false');
 
+  await page.request.delete(`${apiBase}/api/profile`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => null);
+});
+
+test('profile photo upload updates the live profile', async ({ page }) => {
+  const { token } = await bootstrapSession(page, 'Photo Tester');
+
+  await openProfileEditor(page);
+
+  await page.locator('button:has-text("Change photo")').click();
+  await page.locator('input[type="file"]').setInputFiles({
+    name: 'avatar.png',
+    mimeType: 'image/png',
+    buffer: tinyPng,
+  });
+
+  await expect(page.locator('text=Profile photo updated')).toBeVisible({ timeout: 5000 });
+  await expect(page.locator('img[alt="Profile"]')).toBeVisible();
+
+  await page.request.delete(`${apiBase}/api/profile`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => null);
+});
+
+test('public profile view renders live profile data', async ({ page, browser }) => {
+  const { token, userId } = await bootstrapSession(page, 'Public Viewer');
+
+  await openProfileEditor(page);
+  await page.getByRole('textbox').first().fill('Public Viewer');
+  await page.click('button:has-text("Save Profile")');
+  await expect(page.locator('text=Settings saved successfully')).toBeVisible({ timeout: 5000 });
+
+  const anonContext = await browser.newContext();
+  const anonPage = await anonContext.newPage();
+  await mockPublicProfileDependencies(anonPage, userId);
+
+  await anonPage.goto(`/profile/${userId}`);
+  await expect(anonPage.getByRole('heading', { name: 'Public Viewer' })).toBeVisible({ timeout: 10000 });
+  await expect(anonPage.getByText('This professional is currently crafting their mission statement.')).toBeVisible();
+
+  await anonContext.close();
   await page.request.delete(`${apiBase}/api/profile`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => null);
 });

@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 // Mock services
 vi.mock('@/services/enhancedProfileApi', () => ({
