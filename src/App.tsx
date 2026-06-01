@@ -5,7 +5,8 @@ import { Navbar } from "./components/layout/Navbar";
 import { HeroSection } from "./components/landing/HeroSection";
 import { Footer } from "./components/layout/Footer";
 import { AdminRoute } from "./components/auth/AdminRoute";
-import { ProtectedRoute, hasValidToken } from "./components/auth/ProtectedRoute";
+import { ProtectedRoute } from "./components/auth/ProtectedRoute";
+import { hasValidToken } from "./components/auth/authUtils";
 import { Toaster } from "sonner";
 
 const AuthPage = lazy(() => import("./components/auth/AuthPage").then((module) => ({ default: module.AuthPage })));
@@ -77,7 +78,7 @@ export default function App() {
             <Suspense
                 fallback={
                     <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
-                        Loading...
+                        Loading…
                     </div>
                 }
             >

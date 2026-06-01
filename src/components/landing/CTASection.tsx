@@ -9,7 +9,7 @@ export function CTASection() {
     <section className="section-primary relative px-4 md:px-8 lg:px-16 py-12 md:py-16 lg:py-24 overflow-hidden">
       <div className="mx-auto max-w-6xl">
         <div className="relative rounded-[4rem] bg-[linear-gradient(135deg,#16A085_0%,#153D4C_50%,#7BBDE8_100%)] p-1 shadow-[0_32px_120px_-20px_rgba(22,160,133,0.3)]">
-          <div className="absolute inset-0 opacity-10 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] rounded-[4rem]" />
+          <div className="absolute inset-0 opacity-10 bg-[url('/noise.svg')] rounded-[4rem]" />
 
           <div className="bg-[#14253E] backdrop-blur-3xl rounded-[3.9rem] p-12 md:p-24 text-center space-y-10 relative overflow-hidden">
             <div className="absolute top-0 right-0 p-12 opacity-10 pointer-events-none">

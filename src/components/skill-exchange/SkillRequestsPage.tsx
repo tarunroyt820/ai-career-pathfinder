@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { ArrowRightLeft, CheckCircle2, MessageCircle, RefreshCw, Send, X } from "lucide-react";
 import { toast } from "sonner";
 
@@ -40,7 +40,7 @@ export function SkillRequestsPage() {
   const [conversationLoading, setConversationLoading] = useState(false);
   const [conversationSending, setConversationSending] = useState(false);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const data = await getTradeRequests(tab);
@@ -50,11 +50,11 @@ export function SkillRequestsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [tab]);
 
   useEffect(() => {
     load();
-  }, [tab]);
+  }, [load]);
 
   const openConversation = async (request: TradeRequest) => {
     setActiveConversation(request);
@@ -161,6 +161,7 @@ export function SkillRequestsPage() {
           </div>
 
           <button
+            type="button"
             onClick={load}
             disabled={loading}
             className="inline-flex items-center gap-2 self-start rounded-2xl border border-[rgba(22,160,133,0.22)] bg-[rgba(255,255,255,0.03)] px-4 py-3 text-sm font-bold text-white transition hover:bg-[rgba(22,160,133,0.08)] disabled:opacity-60"
@@ -176,6 +177,7 @@ export function SkillRequestsPage() {
           <div className="inline-flex rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)] p-1">
             {(["received", "sent"] as const).map((value) => (
               <button
+                type="button"
                 key={value}
                 onClick={() => setTab(value)}
                 className={cn(
@@ -191,6 +193,7 @@ export function SkillRequestsPage() {
           <div className="flex flex-wrap gap-2">
             {statuses.map((status) => (
               <button
+                type="button"
                 key={status}
                 onClick={() => setStatusFilter(status)}
                 className={cn(
@@ -281,6 +284,7 @@ export function SkillRequestsPage() {
                     </div>
 
                     <button
+                      type="button"
                       onClick={() => openConversation(request)}
                       className="inline-flex items-center gap-2 rounded-2xl border border-[rgba(96,165,250,0.24)] px-4 py-3 text-xs font-black uppercase tracking-[0.18em] text-sky-200 transition hover:bg-[rgba(96,165,250,0.08)]"
                     >
@@ -291,6 +295,7 @@ export function SkillRequestsPage() {
                     {tab === "received" && request.status === "pending" && (
                       <div className="flex flex-wrap gap-3">
                         <button
+                          type="button"
                           onClick={() => onAccept(request._id)}
                           className="inline-flex items-center gap-2 rounded-2xl bg-[linear-gradient(135deg,#16A085,#12796d)] px-4 py-3 text-xs font-black uppercase tracking-[0.18em] text-white shadow-[0_14px_30px_rgba(22,160,133,0.22)] transition hover:opacity-95"
                         >
@@ -298,6 +303,7 @@ export function SkillRequestsPage() {
                           Accept
                         </button>
                         <button
+                          type="button"
                           onClick={() =>
                             setCounterDraft({
                               id: request._id,
@@ -311,6 +317,7 @@ export function SkillRequestsPage() {
                           Counter
                         </button>
                         <button
+                          type="button"
                           onClick={() => onDecline(request._id)}
                           className="rounded-2xl border border-[rgba(244,63,94,0.24)] px-4 py-3 text-xs font-black uppercase tracking-[0.18em] text-rose-200 transition hover:bg-[rgba(244,63,94,0.08)]"
                         >
@@ -335,6 +342,7 @@ export function SkillRequestsPage() {
                 <h3 className="mt-2 text-2xl font-black text-white">Adjust the proposal before sending it back</h3>
               </div>
               <button
+                type="button"
                 onClick={() => setCounterDraft(null)}
                 className="rounded-xl border border-[rgba(255,255,255,0.08)] p-2 text-[rgba(189,216,233,0.7)] transition hover:text-white"
               >
@@ -344,10 +352,11 @@ export function SkillRequestsPage() {
 
             <div className="mt-6 grid gap-4 md:grid-cols-2">
               <div>
-                <label className="mb-2 block text-[11px] font-black uppercase tracking-[0.2em] text-[rgba(189,216,233,0.5)]">
+                <label htmlFor="counter-credits" className="mb-2 block text-[11px] font-black uppercase tracking-[0.2em] text-[rgba(189,216,233,0.5)]">
                   Credits
                 </label>
                 <input
+                  id="counter-credits"
                   type="number"
                   min={1}
                   className={inputClass}
@@ -357,10 +366,11 @@ export function SkillRequestsPage() {
               </div>
 
               <div>
-                <label className="mb-2 block text-[11px] font-black uppercase tracking-[0.2em] text-[rgba(189,216,233,0.5)]">
+                <label htmlFor="counter-duration" className="mb-2 block text-[11px] font-black uppercase tracking-[0.2em] text-[rgba(189,216,233,0.5)]">
                   Duration
                 </label>
                 <input
+                  id="counter-duration"
                   type="number"
                   min={15}
                   step={15}
@@ -372,10 +382,11 @@ export function SkillRequestsPage() {
             </div>
 
             <div className="mt-4">
-              <label className="mb-2 block text-[11px] font-black uppercase tracking-[0.2em] text-[rgba(189,216,233,0.5)]">
+              <label htmlFor="counter-message" className="mb-2 block text-[11px] font-black uppercase tracking-[0.2em] text-[rgba(189,216,233,0.5)]">
                 Message
               </label>
               <textarea
+                id="counter-message"
                 rows={4}
                 className={inputClass}
                 value={counterDraft.message}
@@ -386,12 +397,14 @@ export function SkillRequestsPage() {
 
             <div className="mt-6 flex flex-wrap justify-end gap-3">
               <button
+                type="button"
                 onClick={() => setCounterDraft(null)}
                 className="rounded-2xl border border-[rgba(255,255,255,0.08)] px-5 py-3 text-sm font-bold text-white transition hover:border-[rgba(245,158,11,0.22)]"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={onCounter}
                 disabled={saving}
                 className="rounded-2xl bg-amber-500 px-5 py-3 text-sm font-black uppercase tracking-[0.18em] text-[#241400] transition hover:opacity-95 disabled:opacity-60"
@@ -417,6 +430,7 @@ export function SkillRequestsPage() {
                 </p>
               </div>
               <button
+                type="button"
                 onClick={() => setActiveConversation(null)}
                 className="rounded-xl border border-[rgba(255,255,255,0.08)] p-2 text-[rgba(189,216,233,0.7)] transition hover:text-white"
               >
@@ -510,6 +524,7 @@ export function SkillRequestsPage() {
                 }
               />
               <button
+                type="button"
                 onClick={sendConversationMessage}
                 disabled={conversationSending || !conversationDraft.trim() || ["declined", "expired"].includes(activeConversation.status)}
                 className="inline-flex h-12 items-center gap-2 self-end rounded-2xl bg-[linear-gradient(135deg,#16A085,#12796d)] px-5 text-sm font-black uppercase tracking-[0.18em] text-white shadow-[0_14px_30px_rgba(22,160,133,0.22)] transition hover:opacity-95 disabled:opacity-60"

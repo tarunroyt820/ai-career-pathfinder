@@ -19,7 +19,7 @@ interface LogoProps {
  */
 export function Logo({ className = "", size = "md", onClick, onDoubleClick }: LogoProps) {
     const navigate = useNavigate();
-    const location = useLocation();
+    const _location = useLocation();
 
     const handleLogoClick = () => {
         // 1. If explicit onClick provided, use it

@@ -5,10 +5,12 @@
 
 import {
   useGetNotifications,
-  useMarkNotificationRead,
   useMarkAllNotificationsRead,
-  useDeleteNotification,
 } from '@/hooks/useNotifications';
+import {
+  deleteNotification,
+  markNotificationRead,
+} from '@/services/notificationsApi';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/common/Button';
 import {
@@ -22,7 +24,7 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Notification } from '@/services/notificationsApi';
 
 interface NotificationPanelProps {
@@ -32,9 +34,8 @@ interface NotificationPanelProps {
 export default function NotificationPanel({ onClose }: NotificationPanelProps) {
   const { data, hasNextPage, fetchNextPage, isLoading } =
     useGetNotifications();
-  const markReadMutation = useMarkNotificationRead('');
   const markAllReadMutation = useMarkAllNotificationsRead();
-  const deleteMutation = useDeleteNotification('');
+  const queryClient = useQueryClient();
 
   const notifications = data?.pages.flatMap((page) => page.notifications) || [];
   const unreadCount =
@@ -43,9 +44,8 @@ export default function NotificationPanel({ onClose }: NotificationPanelProps) {
 
   const handleMarkAsRead = async (notificationId: string) => {
     try {
-      // Use the mutation with the correct ID
-      const mutation = useMarkNotificationRead(notificationId);
-      await mutation.mutateAsync();
+      await markNotificationRead(notificationId);
+      await queryClient.invalidateQueries({ queryKey: ['notifications'] });
       toast.success('Marked as read');
     } catch (err) {
       toast.error('Failed to mark as read');
@@ -63,8 +63,8 @@ export default function NotificationPanel({ onClose }: NotificationPanelProps) {
 
   const handleDelete = async (notificationId: string) => {
     try {
-      const mutation = useDeleteNotification(notificationId);
-      await mutation.mutateAsync();
+      await deleteNotification(notificationId);
+      await queryClient.invalidateQueries({ queryKey: ['notifications'] });
       toast.success('Notification deleted');
     } catch (err) {
       toast.error('Failed to delete notification');

@@ -146,13 +146,13 @@ export function AuthPage({ mode }: AuthPageProps) {
             >
               <div className="flex -space-x-3">
                 {[1, 2, 3, 4].map(i => (
-                  <div key={i} className="w-10 h-10 rounded-full flex items-center justify-center shadow-sm" style={{ background: 'var(--color-teal-light)', borderColor: 'var(--bg-primary)', borderWidth: '3px' }}>
+                  <div key={i} className="size-10 rounded-full flex items-center justify-center shadow-sm" style={{ background: 'var(--color-teal-light)', borderColor: 'var(--bg-primary)', borderWidth: '3px' }}>
                     <Sparkles className="h-4 w-4" style={{ color: 'var(--color-teal)' }} />
                   </div>
                 ))}
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full" style={{ background: 'var(--color-teal)' }} />
+                <div className="size-2 rounded-full" style={{ background: 'var(--color-teal)' }} />
                 <span className="text-sm font-bold" style={{ color: 'var(--text-secondary)' }}>
                   2,847 active professionals
                 </span>

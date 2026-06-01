@@ -81,7 +81,7 @@ export function PublicProfile({ userId }: { userId?: string }) {
             <div className="relative">
                 {/* Banner */}
                 <div className="relative h-64 w-full bg-gradient-to-br from-primary via-accent to-primary bg-[length:200%_200%] animate-gradient rounded-[3rem] overflow-hidden shadow-2xl">
-                    <div className="absolute inset-0 opacity-20 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay" />
+                    <div className="absolute inset-0 opacity-20 bg-[url('/noise.svg')] mix-blend-overlay" />
                     <div className="absolute inset-0 bg-black/10" />
                 </div>
 
@@ -132,8 +132,8 @@ export function PublicProfile({ userId }: { userId?: string }) {
                         </div>
 
                         <div className="pb-6 flex gap-3">
-                            {[Linkedin, Twitter, Github].map((Icon, i) => (
-                                <button key={i} className="h-12 w-12 rounded-2xl bg-card border border-border/40 flex items-center justify-center text-muted-foreground hover:bg-primary/5 hover:text-primary transition-all shadow-sm">
+                                {[Linkedin, Twitter, Github].map((Icon, i) => (
+                                <button type="button" key={Icon?.name || i} className="h-12 w-12 rounded-2xl bg-card border border-border/40 flex items-center justify-center text-muted-foreground hover:bg-primary/5 hover:text-primary transition-all shadow-sm">
                                     <Icon className="h-5 w-5" />
                                 </button>
                             ))}
@@ -250,14 +250,14 @@ export function PublicProfile({ userId }: { userId?: string }) {
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="px-8 pb-8">
-                            {(profile.skills || []).length > 0 ? (
-                                <div className="flex flex-wrap gap-2.5">
-                                    {(profile.skills || []).map((skill: string, index: number) => (
-                                        <Badge
-                                            key={index}
-                                            className="px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-[0.1em] bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all cursor-default border-none shadow-sm"
-                                        >
-                                            {skill}
+                                    {(profile.skills || []).length > 0 ? (
+                                        <div className="flex flex-wrap gap-2.5">
+                                    {(profile.skills || []).map((skill: string) => (
+                                            <Badge
+                                                key={skill}
+                                                className="px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-[0.1em] bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all cursor-default border-none shadow-sm"
+                                            >
+                                                {skill}
                                         </Badge>
                                     ))}
                                 </div>
@@ -280,9 +280,9 @@ export function PublicProfile({ userId }: { userId?: string }) {
                             <div className="space-y-3">
                                 <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Tools</p>
                                 <div className="flex flex-wrap gap-2.5">
-                                        {(profile.tools || []).length > 0 ? (profile.tools || []).map((tool: string, index: number) => (
+                                        {(profile.tools || []).length > 0 ? (profile.tools || []).map((tool: string) => (
                                         <Badge
-                                            key={index}
+                                            key={tool}
                                             className="rounded-2xl border-none bg-accent/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.1em] text-accent"
                                         >
                                             {tool}
@@ -296,9 +296,9 @@ export function PublicProfile({ userId }: { userId?: string }) {
                             <div className="space-y-3">
                                 <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Certifications</p>
                                 <div className="flex flex-wrap gap-2.5">
-                                    {(profile.certifications || []).length > 0 ? (profile.certifications || []).map((item: string, index: number) => (
+                                    {(profile.certifications || []).length > 0 ? (profile.certifications || []).map((item: string) => (
                                         <Badge
-                                            key={index}
+                                            key={item}
                                             className="rounded-2xl border-none bg-primary/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.1em] text-primary"
                                         >
                                             {item}
@@ -312,9 +312,9 @@ export function PublicProfile({ userId }: { userId?: string }) {
                             <div className="space-y-3">
                                 <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Strengths</p>
                                 <div className="flex flex-wrap gap-2.5">
-                                    {(profile.strengths || []).length > 0 ? (profile.strengths || []).map((item: string, index: number) => (
+                                    {(profile.strengths || []).length > 0 ? (profile.strengths || []).map((item: string) => (
                                         <Badge
-                                            key={index}
+                                            key={item}
                                             className="rounded-2xl border-none bg-green-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.1em] text-green-500"
                                         >
                                             {item}
@@ -328,9 +328,9 @@ export function PublicProfile({ userId }: { userId?: string }) {
                             <div className="space-y-3">
                                 <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Improvement Areas</p>
                                 <div className="flex flex-wrap gap-2.5">
-                                    {(profile.improvementAreas || []).length > 0 ? (profile.improvementAreas || []).map((item: string, index: number) => (
+                                    {(profile.improvementAreas || []).length > 0 ? (profile.improvementAreas || []).map((item: string) => (
                                         <Badge
-                                            key={index}
+                                            key={item}
                                             className="rounded-2xl border-none bg-amber-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.1em] text-amber-500"
                                         >
                                             {item}
@@ -357,9 +357,9 @@ export function PublicProfile({ userId }: { userId?: string }) {
                             </div>
                             <div className="space-y-2">
                                 {[profile.portfolioUrl, profile.linkedinUrl, profile.githubUrl].filter(Boolean).length > 0 ? (
-                                    [profile.portfolioUrl, profile.linkedinUrl, profile.githubUrl].filter(Boolean).map((link, index) => (
+                                    [profile.portfolioUrl, profile.linkedinUrl, profile.githubUrl].filter(Boolean).map((link) => (
                                         <a
-                                            key={index}
+                                            key={link}
                                             href={link}
                                             target="_blank"
                                             rel="noreferrer"

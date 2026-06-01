@@ -33,7 +33,7 @@ async function bootstrapSession(page: any, fullName: string) {
 
   // Persist token in localStorage before the page loads
   await page.addInitScript((t) => {
-    // @ts-ignore
+    // @ts-expect-error
     localStorage.setItem('nextro_token', t);
   }, token);
 

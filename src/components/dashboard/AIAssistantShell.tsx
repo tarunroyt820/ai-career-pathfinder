@@ -31,6 +31,119 @@ type Attachment = {
   url: string;
 };
 
+type StructuredCareerReply = {
+  targetRole?: string;
+  summary?: string;
+  skillGaps?: Array<{ skill?: string; level?: string; recommendation?: string }>;
+  milestones?: Array<{
+    title?: string;
+    type?: string;
+    estimateHours?: number;
+    priority?: string;
+    reason?: string;
+    exampleEvidence?: string;
+  }>;
+  recommendedResources?: Array<{ type?: string; title?: string; url?: string }>;
+  confidence?: number;
+};
+
+function parseStructuredCareerReply(content: string): StructuredCareerReply | null {
+  const trimmed = content.trim();
+  if (!trimmed.startsWith("{") || !trimmed.endsWith("}")) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed) as StructuredCareerReply;
+    if (!parsed || typeof parsed !== "object") {
+      return null;
+    }
+
+    const hasCareerShape =
+      "summary" in parsed ||
+      "milestones" in parsed ||
+      "recommendedResources" in parsed ||
+      "skillGaps" in parsed;
+
+    return hasCareerShape ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function formatStructuredCareerReply(content: string): string {
+  const parsed = parseStructuredCareerReply(content);
+  if (!parsed) {
+    return content;
+  }
+
+  const lines: string[] = [];
+
+  if (parsed.targetRole) {
+    lines.push(`# ${parsed.targetRole}`);
+    lines.push("");
+  }
+
+  if (parsed.summary) {
+    lines.push(parsed.summary);
+    lines.push("");
+  }
+
+  if (Array.isArray(parsed.skillGaps) && parsed.skillGaps.length > 0) {
+    lines.push("## Skill Gaps");
+    lines.push(
+      ...parsed.skillGaps.map((gap) => {
+        const label = gap.skill || "Skill gap";
+        const details = [gap.level, gap.recommendation].filter(Boolean).join(" - ");
+        return details ? `- **${label}**: ${details}` : `- **${label}**`;
+      }),
+    );
+    lines.push("");
+  }
+
+  if (Array.isArray(parsed.milestones) && parsed.milestones.length > 0) {
+    lines.push("## Milestones");
+    lines.push(
+      ...parsed.milestones.map((milestone, index) => {
+        const meta = [milestone.type, milestone.priority, milestone.estimateHours ? `${milestone.estimateHours}h` : ""]
+          .filter(Boolean)
+          .join(" | ");
+        const parts = [`${index + 1}. **${milestone.title || "Untitled milestone"}**`];
+        if (meta) {
+          parts.push(`  ${meta}`);
+        }
+        if (milestone.reason) {
+          parts.push(`  ${milestone.reason}`);
+        }
+        if (milestone.exampleEvidence) {
+          parts.push(`  Evidence: ${milestone.exampleEvidence}`);
+        }
+        return parts.join("\n");
+      }),
+    );
+    lines.push("");
+  }
+
+  if (Array.isArray(parsed.recommendedResources) && parsed.recommendedResources.length > 0) {
+    lines.push("## Recommended Resources");
+    lines.push(
+      ...parsed.recommendedResources.map((resource) => {
+        const title = resource.title || "Resource";
+        const label = resource.type ? `${title} (${resource.type})` : title;
+        return resource.url ? `- [${label}](${resource.url})` : `- ${label}`;
+      }),
+    );
+    lines.push("");
+  }
+
+  if (typeof parsed.confidence === "number") {
+    const confidencePercent = parsed.confidence <= 1 ? Math.round(parsed.confidence * 100) : Math.round(parsed.confidence);
+    lines.push(`Confidence: ${confidencePercent}%`);
+  }
+
+  return lines.join("\n").trim() || content;
+}
+
 function useAutoResizeTextarea(minHeight: number, maxHeight = 200) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -428,6 +541,7 @@ export function AIAssistantShell() {
             <>
               {messages.map((msg, index) => {
                 const isUser = msg.role === "user";
+                const displayContent = isUser ? msg.content : formatStructuredCareerReply(msg.content);
                 return (
                   <div key={`${msg.role}-${index}-${msg.timestamp ?? "pending"}`} className={cn("flex gap-3", isUser && "flex-row-reverse")}>
                     <div className={cn("flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[10px]", isUser ? "border border-white/12 bg-white/8 text-white/55" : "bg-gradient-to-br from-indigo-500 to-violet-500 shadow-[0_2px_12px_rgba(99,102,241,0.28)]")}>
@@ -439,7 +553,7 @@ export function AIAssistantShell() {
                           <p className="whitespace-pre-wrap">{msg.content}</p>
                         ) : (
                           <div className="prose prose-sm max-w-none prose-headings:font-extrabold prose-headings:text-white prose-p:text-white/75 prose-strong:text-white prose-li:text-white/75 prose-code:rounded prose-code:bg-white/8 prose-code:px-1 prose-code:text-white prose-pre:bg-black/30">
-                            <ReactMarkdown>{msg.content}</ReactMarkdown>
+                            <ReactMarkdown>{displayContent}</ReactMarkdown>
                           </div>
                         )}
                       </div>
@@ -448,7 +562,7 @@ export function AIAssistantShell() {
                           {msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}
                         </span>
                         {!isUser && (
-                          <button type="button" onClick={() => handleCopy(msg.content, index)} className="flex items-center gap-1 text-[10px] font-medium text-white/25 transition hover:text-white/55">
+                          <button type="button" onClick={() => handleCopy(displayContent, index)} className="flex items-center gap-1 text-[10px] font-medium text-white/25 transition hover:text-white/55">
                             {copiedIndex === index ? <><Check className="h-3 w-3 text-emerald-400" /><span className="text-emerald-400">Copied</span></> : <><Copy className="h-3 w-3" />Copy</>}
                           </button>
                         )}

@@ -64,8 +64,9 @@ export function Navbar() {
         {/* Mobile Toggle */}
         {/* Hamburger Button - Mobile Only */}
         <button
+          type="button"
           onClick={() => setMobileMenuOpen(true)}
-          className="lg:hidden flex flex-col justify-center items-center w-10 h-10 rounded-xl border border-[rgba(22,160,133,0.30)] bg-[rgba(20,37,62,0.60)] gap-1.5 hover:border-[#16A085] transition-all"
+          className="lg:hidden flex flex-col justify-center items-center size-10 rounded-xl border border-[rgba(22,160,133,0.30)] bg-[rgba(20,37,62,0.60)] gap-1.5 hover:border-[#16A085] transition-all"
           aria-label="Open menu"
         >
           <span className="w-5 h-0.5 bg-[#BDD8E9] rounded-full" />
@@ -89,8 +90,9 @@ export function Navbar() {
         <div className="flex items-center justify-between p-6 border-b border-[rgba(22,160,133,0.15)]">
           <Logo size="sm" />
           <button
+            type="button"
             onClick={() => setMobileMenuOpen(false)}
-            className="w-9 h-9 rounded-xl border border-[rgba(22,160,133,0.30)] bg-[rgba(20,37,62,0.80)] flex items-center justify-center hover:border-[#16A085] hover:bg-[rgba(22,160,133,0.15)] transition-all text-[#BDD8E9]"
+            className="size-9 rounded-xl border border-[rgba(22,160,133,0.30)] bg-[rgba(20,37,62,0.80)] flex items-center justify-center hover:border-[#16A085] hover:bg-[rgba(22,160,133,0.15)] transition-all text-[#BDD8E9]"
           >
             ✕
           </button>

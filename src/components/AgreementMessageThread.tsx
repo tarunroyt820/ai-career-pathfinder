@@ -84,7 +84,7 @@ const AgreementMessageThread = ({ agreementId, disabled = false }: Props) => {
     <div className="mt-4 rounded-2xl border border-[rgba(22,160,133,0.25)] bg-[rgba(10,14,39,0.5)] p-4">
       <div className="mb-2 flex items-center justify-between">
         <h4 className="text-sm font-semibold uppercase tracking-wide text-[rgba(189,216,233,0.85)]">Agreement Messages</h4>
-        {loading && <p className="text-xs text-[rgba(189,216,233,0.75)]">Loading...</p>}
+        {loading && <p className="text-xs text-[rgba(189,216,233,0.75)]">Loading…</p>}
       </div>
 
       {error && <p className="mb-2 text-sm text-red-300">{error}</p>}
@@ -112,6 +112,7 @@ const AgreementMessageThread = ({ agreementId, disabled = false }: Props) => {
 
       <div className="mt-3 flex gap-2">
         <input
+          aria-label="Message"
           className={inputClass}
           value={input}
           onChange={(event) => setInput(event.target.value)}
@@ -122,11 +123,11 @@ const AgreementMessageThread = ({ agreementId, disabled = false }: Props) => {
             }
           }}
           disabled={disabled || sending}
-          placeholder={disabled ? "Messaging is disabled for non-active agreements." : "Type a message..."}
+          placeholder={disabled ? "Messaging is disabled for non-active agreements." : "Type a message…"}
           maxLength={2000}
         />
         <Button onClick={handleSend} disabled={disabled || sending || !input.trim()}>
-          {sending ? "Sending..." : "Send"}
+          {sending ? "Sending…" : "Send"}
         </Button>
       </div>
     </div>

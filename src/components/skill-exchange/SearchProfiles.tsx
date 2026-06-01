@@ -20,7 +20,7 @@ export function SearchProfiles() {
       const res = await searchProfiles(q.trim(), type, page, limit);
       setResults(res.profiles || []);
     } catch (err) {
-      // eslint-disable-next-line no-console
+       
       console.error('Search failed', err);
       setResults([]);
     } finally {

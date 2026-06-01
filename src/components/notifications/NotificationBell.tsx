@@ -3,7 +3,7 @@
  * Badge showing unread notification count with dropdown
  */
 
-import { Bell, X } from 'lucide-react';
+import { Bell } from 'lucide-react';
 import { useGetUnreadCount } from '@/hooks/useNotifications';
 import { useState } from 'react';
 import NotificationPanel from './NotificationPanel';
@@ -11,7 +11,7 @@ import { Button } from '@/components/common/Button';
 
 export default function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
-  const { data, isLoading } = useGetUnreadCount();
+  const { data, isLoading: _isLoading } = useGetUnreadCount();
 
   const unreadCount = data || 0;
 

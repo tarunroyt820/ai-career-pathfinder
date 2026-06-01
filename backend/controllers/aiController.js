@@ -5,7 +5,7 @@ const AIRequestLog = require('../models/AIRequestLog');
 const aiService = require('../services/ai/ai.service');
 const profileCache = require('../utils/profileCache');
 const { getProvider } = require('../utils/providerRouter');
-const { CAREER_PLAN_SYSTEM_PROMPT } = require('../services/ai/prompts/careerPlan.prompt');
+const { CAREER_PLAN_SYSTEM_PROMPT, CAREER_ASSISTANT_CHAT_PROMPT } = require('../services/ai/prompts/careerPlan.prompt');
 const { getJobStatus } = require('../queues/aiQueue');
 
 const timer = (label) => {
@@ -277,10 +277,11 @@ exports.askAI = async (req, res) => {
 
         const compactContext = buildCompactContext(userProfile, existingPlan);
 
-        // Use shared career plan system prompt for consistency
         const systemPrompt = [
-            CAREER_PLAN_SYSTEM_PROMPT,
-            `You are a career guidance AI assistant. Current plan: ${buildPlanContext(existingPlan)}. ${compactContext}. Help the user refine, update, or act on their plan. Be concise.`,
+            CAREER_ASSISTANT_CHAT_PROMPT,
+            `Current plan: ${buildPlanContext(existingPlan)}.`,
+            compactContext ? `Profile context: ${compactContext}.` : '',
+            'Help the user refine, update, or act on their plan.',
         ].join('\n\n');
 
         const legacyPrompt = `
@@ -361,7 +362,7 @@ exports.askAI = async (req, res) => {
             } catch (primaryError) {
                 // Retry once with a compact prompt to avoid token/latency spikes on long chat histories.
                 const compactRetryPrompt = [
-                    CAREER_PLAN_SYSTEM_PROMPT,
+                    CAREER_ASSISTANT_CHAT_PROMPT,
                     `SYSTEM: You are a concise career guidance AI.`,
                     `PROFILE: ${buildCompactProfile(userProfile)}`,
                     `PLAN: ${buildPlanContext(existingPlan)}`,

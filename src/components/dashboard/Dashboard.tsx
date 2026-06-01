@@ -108,20 +108,22 @@ export function Dashboard() {
           .slice(0, 2)
       : "JD";
 
-  const adminNavItems = isAdmin
-    ? [
-        { icon: BookOpen, label: "Courses", id: "admin-courses", path: "/admin/courses" },
-        { icon: Shield, label: "Admin", id: "admin", path: "/admin" },
-      ]
-    : [];
+  const adminNavItems = useMemo(
+    () =>
+      isAdmin
+        ? [
+            { icon: BookOpen, label: "Courses", id: "admin-courses", path: "/admin/courses" },
+            { icon: Shield, label: "Admin", id: "admin", path: "/admin" },
+          ]
+        : [],
+    [isAdmin],
+  );
 
-  const allNavItems = [...primaryNavItems, ...secondaryNavItems, ...adminNavItems];
+  const allNavItems = useMemo(() => [...primaryNavItems, ...secondaryNavItems, ...adminNavItems], [adminNavItems]);
 
   const activeItem = useMemo(
-    () =>
-      allNavItems.find((item) => location.pathname.startsWith(item.path)) ||
-      allNavItems[0],
-    [location.pathname],
+    () => allNavItems.find((item) => location.pathname.startsWith(item.path)) || allNavItems[0],
+    [location.pathname, allNavItems],
   );
   const isAssistantRoute = location.pathname.startsWith("/dashboard/assistant");
 

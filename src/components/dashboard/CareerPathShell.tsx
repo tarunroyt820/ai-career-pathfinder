@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/common/Button";
 import { Compass, Target, Map, Sparkles, Plus, Clock, CheckCircle2, AlertCircle } from "lucide-react";
 import { ProgressBar } from "@/components/common/ProgressBar";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { CareerPlan } from "@/types/careerPlan";
 import { toast } from "sonner";
 import {
@@ -229,7 +229,7 @@ export function CareerPathShell() {
   const [selectedPlanId, setSelectedPlanId] = useState<string | undefined>();
   const plansQuery = useGetPlans();
   const selectedPlanQuery = useGetPlan(selectedPlanId);
-  const plans = plansQuery.data || [];
+  const plans = useMemo(() => plansQuery.data || [], [plansQuery.data]);
   const hasPlans = plans.length > 0;
   const selectedPlan = selectedPlanQuery.data;
 

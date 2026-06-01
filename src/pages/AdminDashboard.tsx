@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   fetchAdminSummary,
   fetchAiLogs,
@@ -43,7 +43,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const loadAll = async () => {
+  const loadAll = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
@@ -63,11 +63,11 @@ export default function AdminDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [userSearch, aiSearch]);
 
   useEffect(() => {
     loadAll();
-  }, []);
+  }, [loadAll]);
 
   const reloadUsers = async () => {
     const usersRes = await fetchAdminUsers(userSearch, 1, 10);

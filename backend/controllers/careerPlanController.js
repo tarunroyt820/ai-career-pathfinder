@@ -1,5 +1,5 @@
 const careerPlanService = require('../services/careerPlanService');
-const { queueGenerateMilestones, queueRefreshRecommendations } = require('../queues/aiQueue');
+const { queueGenerateMilestones, queueRefreshRecommendations, getAIQueueStatus } = require('../queues/aiQueue');
 const CareerPlan = require('../models/CareerPlan');
 
 /**
@@ -43,7 +43,14 @@ exports.createPlan = async (req, res) => {
         return res.status(201).json({
           success: true,
           data: updatedPlan,
-          message: 'Career plan created with recommendations.',
+          message: 'Career plan created with recommendations in synchronous AI mode.',
+          aiProcessing: {
+            mode: queueResult.processingMode || 'synchronous',
+            queued: false,
+            processed: true,
+            disabledReason: queueResult.reason || null,
+            durationMs: queueResult.durationMs || null,
+          },
         });
       }
 
@@ -61,6 +68,12 @@ exports.createPlan = async (req, res) => {
           data: updatedPlan,
           message: 'Career plan created. AI generation queued.',
           jobId: queueResult.jobId,
+          aiProcessing: {
+            mode: queueResult.processingMode || 'queued',
+            queued: true,
+            processed: false,
+            disabledReason: null,
+          },
         });
       }
     } catch (queueErr) {
@@ -68,10 +81,17 @@ exports.createPlan = async (req, res) => {
       // Don't fail the request; AI can be generated later
     }
 
+    const queueStatus = getAIQueueStatus();
     return res.status(201).json({
       success: true,
       data: plan,
       message: 'Career plan created. AI generation is in progress.',
+      aiProcessing: {
+        mode: queueStatus.processingMode,
+        queued: false,
+        processed: false,
+        disabledReason: queueStatus.disabledReason,
+      },
     });
   } catch (err) {
     console.error('createPlan error:', err);
@@ -223,12 +243,25 @@ exports.refreshPlan = async (req, res) => {
         success: true,
         message: 'Plan refresh queued. Check back in a few seconds for updated recommendations.',
         jobId: queueResult.jobId,
+        aiProcessing: {
+          mode: queueResult.processingMode || 'queued',
+          queued: true,
+          processed: false,
+          disabledReason: null,
+        },
       });
     }
 
     return res.status(200).json({
       success: true,
       message: 'Plan refresh processed synchronously.',
+      aiProcessing: {
+        mode: queueResult?.processingMode || 'synchronous',
+        queued: false,
+        processed: true,
+        disabledReason: queueResult?.reason || null,
+        durationMs: queueResult?.durationMs || null,
+      },
     });
   } catch (err) {
     console.error('refreshPlan error:', err);

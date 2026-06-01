@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRightLeft,
@@ -59,7 +59,7 @@ export function SkillMatchesPage() {
   const [draftRequest, setDraftRequest] = useState<DraftRequest>(defaultDraft);
   const [sending, setSending] = useState(false);
 
-  const load = async (skill = searchQuery) => {
+  const load = useCallback(async (skill = searchQuery) => {
     setLoading(true);
     try {
       const result = await getMatches(skill, 1, 12);
@@ -69,7 +69,7 @@ export function SkillMatchesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchQuery]);
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -86,7 +86,7 @@ export function SkillMatchesPage() {
 
     loadProfile();
     load("");
-  }, []);
+  }, [load]);
 
   const filteredMatches = useMemo(() => {
     return matches.filter((match) => {

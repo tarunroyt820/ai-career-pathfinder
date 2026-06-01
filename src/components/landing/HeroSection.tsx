@@ -198,7 +198,7 @@ export function HeroSection() {
 
             {/* Decorative elements */}
             <motion.div
-              className="absolute -bottom-6 -left-6 w-32 h-32 bg-vibrant-pink rounded-full blur-3xl opacity-40"
+              className="absolute -bottom-6 -left-6 size-32 bg-vibrant-pink rounded-full blur-3xl opacity-40"
               animate={{ scale: [1, 1.2, 1] }}
               transition={{ repeat: Infinity, duration: 4 }}
             />
@@ -226,7 +226,7 @@ export function HeroSection() {
             {/* Teal corner glow — bottom-left of image */}
             <motion.div
               aria-hidden="true"
-              className="pointer-events-none absolute -bottom-8 -left-8 w-36 h-36 rounded-full -z-10"
+              className="pointer-events-none absolute -bottom-8 -left-8 size-36 rounded-full -z-10"
               style={{
                 background:
                   "radial-gradient(circle, rgba(22,160,133,0.45) 0%, transparent 70%)",
@@ -246,7 +246,7 @@ export function HeroSection() {
             {/* Ice blue corner glow — top-right of image */}
             <motion.div
               aria-hidden="true"
-              className="pointer-events-none absolute -top-8 -right-8 w-32 h-32 rounded-full -z-10"
+              className="pointer-events-none absolute -top-8 -right-8 size-32 rounded-full -z-10"
               style={{
                 background:
                   "radial-gradient(circle, rgba(123,189,232,0.35) 0%, transparent 70%)",

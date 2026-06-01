@@ -6,7 +6,7 @@
 import { Milestone } from "@/types/careerPlan";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/common/Button";
-import { CheckCircle2, Clock, FileText, Link as LinkIcon } from "lucide-react";
+import { CheckCircle2, FileText, Link as LinkIcon } from "lucide-react";
 import { useState } from "react";
 import { useCompleteMilestone } from "@/hooks/useCareerPlans";
 import { toast } from "sonner";

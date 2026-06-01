@@ -208,7 +208,7 @@ app.use('/api/admin', adminCourseRoutes);
 app.use('/api/push-subscriptions', pushSubscriptionRoutes);
 
 // Global Error Handler
-app.use((err, req, res, next) => {
+app.use((err, req, res, _next) => {
     console.error(err.stack);
     res.status(500).json({ 
         message: 'Something went wrong!' 

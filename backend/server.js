@@ -10,7 +10,7 @@ const { expireOldRequests } = require('./jobs/requestExpiryJob');
 const { runReminderJob } = require('./jobs/reminderJob');
 const { runQualityScoreJob } = require('./jobs/qualityScoreJob');
 const { runCareerPlanReminderJob } = require('./jobs/careerPlanMilestoneReminderJob');
-const { initializeQueue, closeQueue } = require('./queues/aiQueue');
+const { initializeQueue, closeQueue, getAIQueueStatus } = require('./queues/aiQueue');
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -49,6 +49,8 @@ const startServer = async () => {
         console.log(`[BUILD] AI stack: Groq / Hugging Face / NVIDIA / OpenRouter`);
         console.log(`AI Provider: ${process.env.AI_PROVIDER || 'groq (default)'}`);
         console.log(`Career Path Provider: ${process.env.CAREER_PATH_PROVIDER || process.env.AI_PROVIDER || 'groq'}`);
+        const queueStatus = getAIQueueStatus();
+        console.log(`AI Queue Mode: ${queueStatus.processingMode}${queueStatus.disabledReason ? ` (${queueStatus.disabledReason})` : ''}`);
         console.log(`Groq key loaded: ${process.env.GROQ_API_KEY ? 'YES' : 'NO - check backend/.env'}`);
         console.log(`OpenRouter key loaded: ${process.env.OPENROUTER_API_KEY ? 'YES' : 'NO - check backend/.env'}`);
         console.log(`HF token loaded: ${(process.env.HUGGINGFACE_API_KEY || process.env.HUGGINGFACE_API_KEY_2 || process.env.HF_API_TOKEN || process.env.HF_TOKEN) ? 'YES' : 'NO - check backend/.env'}`);

@@ -16,27 +16,23 @@ export interface AuthResponse {
 
 
 export const login = async (email: string, password: string): Promise<AuthResponse> => {
-    try {
-        const response = await axios.post<AuthResponse>(`${API_URL}/login`, { email, password });
+    const response = await axios.post<AuthResponse>(`${API_URL}/login`, { email, password });
 
-        if (!response.data || !response.data.token) {
-            throw new Error("Invalid server response: No token received");
-        }
-
-        localStorage.setItem(
-            "nextro_token",
-            response.data.token
-        );
-        if (response.data.refreshToken) {
-            localStorage.setItem(
-                "nextro_refresh_token",
-                response.data.refreshToken
-            );
-        }
-        return response.data;
-    } catch (error: any) {
-        throw error;
+    if (!response.data || !response.data.token) {
+        throw new Error("Invalid server response: No token received");
     }
+
+    localStorage.setItem(
+        "nextro_token",
+        response.data.token
+    );
+    if (response.data.refreshToken) {
+        localStorage.setItem(
+            "nextro_refresh_token",
+            response.data.refreshToken
+        );
+    }
+    return response.data;
 };
 
 export const signup = async (
@@ -45,17 +41,13 @@ export const signup = async (
     password: string,
     joinSkillExchange = false
 ): Promise<AuthResponse> => {
-    try {
-        const response = await axios.post<AuthResponse>(`${API_URL}/signup`, {
-            fullName,
-            email,
-            password,
-            joinSkillExchange
-        });
-        return response.data;
-    } catch (error: any) {
-        throw error;
-    }
+    const response = await axios.post<AuthResponse>(`${API_URL}/signup`, {
+        fullName,
+        email,
+        password,
+        joinSkillExchange
+    });
+    return response.data;
 };
 
 export const verifyEmail = async (email: string, otp: string): Promise<{ message: string }> => {

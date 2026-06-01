@@ -3,13 +3,12 @@
  * Displays AI-generated recommendations (skill gaps, resources, insights)
  */
 
-import { Recommendation, CareerPlan } from "@/types/careerPlan";
+import { CareerPlan } from "@/types/careerPlan";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/common/Button";
 import {
   Sparkles,
   BookOpen,
-  Lightbulb,
   Target,
   TrendingUp,
   ExternalLink,
@@ -52,31 +51,7 @@ export default function RecommendationPanel({ plan }: RecommendationPanelProps) 
 
   const isEmpty = recommendations.length === 0;
 
-  const getRecommendationIcon = (type: string) => {
-    switch (type) {
-      case "SKILL_GAP":
-        return <Target className="h-5 w-5 text-orange-500" />;
-      case "RESOURCE":
-        return <BookOpen className="h-5 w-5 text-blue-500" />;
-      case "MARKET_INSIGHT":
-        return <TrendingUp className="h-5 w-5 text-green-500" />;
-      default:
-        return <Lightbulb className="h-5 w-5 text-primary" />;
-    }
-  };
-
-  const getRecommendationLabel = (type: string) => {
-    switch (type) {
-      case "SKILL_GAP":
-        return "Skill Gap";
-      case "RESOURCE":
-        return "Recommended Resource";
-      case "MARKET_INSIGHT":
-        return "Market Insight";
-      default:
-        return "Recommendation";
-    }
-  };
+  // icon/label helpers removed — kept inline where used to avoid react-refresh noise
 
   return (
     <Card className="rounded-3xl border-border/50">

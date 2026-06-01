@@ -42,7 +42,6 @@ const CourseCategorySchema = new mongoose.Schema(
     }
 );
 
-CourseCategorySchema.index({ slug: 1 }, { unique: true });
 CourseCategorySchema.index({ sortOrder: 1, name: 1 });
 
 module.exports = mongoose.model('CourseCategory', CourseCategorySchema);

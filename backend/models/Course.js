@@ -147,7 +147,6 @@ const CourseSchema = new mongoose.Schema(
     }
 );
 
-CourseSchema.index({ slug: 1 }, { unique: true });
 CourseSchema.index({ status: 1, featured: 1, createdAt: -1 });
 CourseSchema.index({ categoryId: 1, difficulty: 1, platform: 1 });
 CourseSchema.index({ title: 'text', shortDescription: 'text', instructor: 'text', tags: 'text', categoryName: 'text' });

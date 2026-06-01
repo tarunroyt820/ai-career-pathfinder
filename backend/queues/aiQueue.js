@@ -31,6 +31,35 @@ let aiQueue = null;
 let aiWorker = null;
 let queueDisabledReason = null;
 
+function getAIQueueStatus() {
+  return {
+    available: Boolean(aiQueue),
+    processingMode: aiQueue ? 'queued' : 'synchronous',
+    disabledReason: aiQueue ? null : (queueDisabledReason || 'not_initialized'),
+  };
+}
+
+async function runSynchronousFallback(label, processor) {
+  const startedAt = Date.now();
+  const status = getAIQueueStatus();
+  const reason = status.disabledReason || 'queue_unavailable';
+
+  console.warn(`[AI QUEUE] ${label} running synchronously (${reason}).`);
+
+  await processor();
+
+  const durationMs = Date.now() - startedAt;
+  console.log(`[AI QUEUE] ${label} synchronous fallback completed in ${durationMs}ms.`);
+
+  return {
+    queued: false,
+    processed: true,
+    processingMode: 'synchronous',
+    reason,
+    durationMs,
+  };
+}
+
 /**
  * Initialize the AI queue and worker
  */
@@ -223,12 +252,12 @@ async function processRefreshRecommendations(data) {
  */
 async function queueGenerateMilestones(planId, userId, targetRole, userProfile = {}) {
   if (!aiQueue) {
-    console.warn(
-      `[AI QUEUE] Queue not available${queueDisabledReason ? ` (${queueDisabledReason})` : ''}. Processing synchronously.`
-    );
-    // Fallback: process synchronously
-    const plan = await CareerPlan.findById(planId);
-    if (plan) {
+    return runSynchronousFallback('generateMilestones', async () => {
+      const plan = await CareerPlan.findById(planId);
+      if (!plan) {
+        return;
+      }
+
       const milestones = await recommendationService.generateMilestones(
         targetRole,
         userProfile,
@@ -253,8 +282,7 @@ async function queueGenerateMilestones(planId, userId, targetRole, userProfile =
       plan.aiGeneratedAt = new Date();
       plan.aiLastRefreshAt = new Date();
       await plan.save();
-    }
-    return { queued: false, processed: true };
+    });
   }
 
   try {
@@ -266,7 +294,7 @@ async function queueGenerateMilestones(planId, userId, targetRole, userProfile =
     });
 
     console.log(`[AI QUEUE] Queued generateMilestones job (ID: ${job.id})`);
-    return { queued: true, jobId: job.id };
+    return { queued: true, jobId: job.id, processingMode: 'queued', reason: null };
   } catch (err) {
     console.error(`[AI QUEUE] Failed to queue job: ${err.message}`);
     throw err;
@@ -278,15 +306,14 @@ async function queueGenerateMilestones(planId, userId, targetRole, userProfile =
  */
 async function queueRefreshRecommendations(planId, userId, userProfile = {}) {
   if (!aiQueue) {
-    console.warn(
-      `[AI QUEUE] Queue not available${queueDisabledReason ? ` (${queueDisabledReason})` : ''}. Processing synchronously.`
-    );
-    // Fallback: process synchronously
-    const plan = await CareerPlan.findById(planId);
-    if (plan) {
+    return runSynchronousFallback('refreshRecommendations', async () => {
+      const plan = await CareerPlan.findById(planId);
+      if (!plan) {
+        return;
+      }
+
       await recommendationService.refreshPlanAI(plan, userProfile);
-    }
-    return { queued: false, processed: true };
+    });
   }
 
   try {
@@ -297,7 +324,7 @@ async function queueRefreshRecommendations(planId, userId, userProfile = {}) {
     });
 
     console.log(`[AI QUEUE] Queued refreshRecommendations job (ID: ${job.id})`);
-    return { queued: true, jobId: job.id };
+    return { queued: true, jobId: job.id, processingMode: 'queued', reason: null };
   } catch (err) {
     console.error(`[AI QUEUE] Failed to queue job: ${err.message}`);
     throw err;
@@ -309,7 +336,17 @@ async function queueRefreshRecommendations(planId, userId, userProfile = {}) {
  */
 async function getJobStatus(jobId) {
   if (!aiQueue) {
-    return null;
+    const status = getAIQueueStatus();
+    return {
+      id: jobId,
+      name: null,
+      state: 'unavailable',
+      progress: 100,
+      data: null,
+      result: null,
+      processingMode: status.processingMode,
+      disabledReason: status.disabledReason,
+    };
   }
 
   try {
@@ -354,6 +391,7 @@ module.exports = {
   queueGenerateMilestones,
   queueRefreshRecommendations,
   getJobStatus,
+  getAIQueueStatus,
   closeQueue,
   aiQueue,
 };

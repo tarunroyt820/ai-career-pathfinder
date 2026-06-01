@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, BookOpen, ExternalLink, Filter, Plus, Search } from "lucide-react";
 
@@ -67,7 +67,7 @@ export default function AdminCoursesPage() {
   const [actionId, setActionId] = useState("");
   const [error, setError] = useState("");
 
-  const loadCourses = async () => {
+  const loadCourses = useCallback(async () => {
     setIsLoading(true);
     setError("");
 
@@ -94,11 +94,11 @@ export default function AdminCoursesPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [search, selectedCategory, selectedPlatform, selectedDifficulty, selectedStatus, isFeaturedOnly]);
 
   useEffect(() => {
     void loadCourses();
-  }, []);
+  }, [loadCourses]);
 
   const stats = useMemo(() => {
     const published = courses.filter((course) => course.status === "published").length;

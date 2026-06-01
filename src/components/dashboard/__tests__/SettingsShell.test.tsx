@@ -45,7 +45,6 @@ import * as profileApi from '@/services/profileApi';
 describe('SettingsShell', () => {
   it('rejects unsupported file types', async () => {
     // Mock Image load behavior for jsdom
-    // @ts-ignore
     global.Image = class {
       onload: any;
       onerror: any;
@@ -76,7 +75,6 @@ describe('SettingsShell', () => {
   });
 
   it('uploads valid image files', async () => {
-    // @ts-ignore
     global.Image = class {
       onload: any;
       onerror: any;

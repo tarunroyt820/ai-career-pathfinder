@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/common/Button";
@@ -74,7 +74,7 @@ export function SkillExchangesPage() {
 
   const normalizeList = <T,>(value: T[] | undefined | null): T[] => (Array.isArray(value) ? value : []);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
       const agreementsData = normalizeList(await getAgreements());
       setAgreements(agreementsData);
@@ -129,11 +129,11 @@ export function SkillExchangesPage() {
     } catch (error) {
       toast.error((error as Error).message);
     }
-  };
+  }, [currentUserId]);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   useEffect(() => {
     const interval = setInterval(() => {
