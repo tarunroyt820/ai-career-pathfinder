@@ -3,6 +3,44 @@ const { CAREER_PLAN_SYSTEM_PROMPT } = require('./ai/prompts/careerPlan.prompt');
 const { getProvider } = require('../utils/providerRouter');
 
 const CAREER_PATH_MAX_TOKENS = Number(process.env.CAREER_PATH_MAX_TOKENS || 2048);
+const ALLOWED_MILESTONE_TYPES = new Set(['skill', 'project', 'certification', 'other']);
+const ALLOWED_PRIORITIES = new Set(['LOW', 'MEDIUM', 'HIGH']);
+
+function normalizeMilestoneType(value, title = '', notes = '') {
+  const candidates = [
+    String(value || '').toLowerCase(),
+    String(title || '').toLowerCase(),
+    String(notes || '').toLowerCase(),
+  ];
+
+  for (const candidate of candidates) {
+    if (candidate.includes('project')) return 'project';
+    if (candidate.includes('cert')) return 'certification';
+    if (candidate.includes('other')) return 'other';
+    if (candidate.includes('skill')) return 'skill';
+  }
+
+  return 'skill';
+}
+
+function normalizePriority(value) {
+  const normalized = String(value || 'MEDIUM').toUpperCase();
+  return ALLOWED_PRIORITIES.has(normalized) ? normalized : 'MEDIUM';
+}
+
+function normalizeEstimateHours(value, fallback = 20) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function normalizeDueDate(value, index) {
+  const parsed = new Date(value);
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed.toISOString();
+  }
+
+  return new Date(Date.now() + (30 + index * 20) * 24 * 60 * 60 * 1000).toISOString();
+}
 
 function slugifyNodeId(value, fallback = 'node') {
   return String(value || fallback)
@@ -285,10 +323,10 @@ async function generateMilestones(targetRole, userProfile = {}, existingSkills =
     // Ensure all required fields and add source info
     const milestones = parsedMilestones.map((m, index) => ({
       title: m.title || `Milestone ${index + 1}`,
-      type: m.type || 'skill',
-      estimateHours: m.estimateHours || 20,
-      priority: (m.priority || 'MEDIUM').toUpperCase(),
-      dueDate: m.dueDate || new Date(Date.now() + (30 + index * 20) * 24 * 60 * 60 * 1000).toISOString(),
+      type: normalizeMilestoneType(m.type, m.title, m.notes || m.reason || ''),
+      estimateHours: normalizeEstimateHours(m.estimateHours, 20),
+      priority: normalizePriority(m.priority),
+      dueDate: normalizeDueDate(m.dueDate, index),
       notes: m.notes || m.reason || '',
       completed: false,
       evidence: [],

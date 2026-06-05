@@ -338,7 +338,15 @@ exports.uploadResume = async (req, res) => {
 
 		const fileUrl = `/uploads/${req.file.filename}`;
 		const targetRole = String(req.body?.targetRole || '').trim();
-		const analysisResult = await analyzeResumeFile(req.file.path, req.file.mimetype, targetRole);
+		let analysisResult = null;
+		let analysisError = null;
+
+		try {
+			analysisResult = await analyzeResumeFile(req.file.path, req.file.mimetype, targetRole);
+		} catch (error) {
+			analysisError = error;
+			console.error('Resume upload analysis error:', error);
+		}
 
 		await ResumeUploadLog.create({
 			userId: req.user._id || req.user.id,
@@ -347,21 +355,24 @@ exports.uploadResume = async (req, res) => {
 			mimeType: req.file.mimetype,
 			size: req.file.size,
 			targetRole,
-			providerUsed: analysisResult.providerUsed || '',
-			modelUsed: analysisResult.modelUsed || ''
+			providerUsed: analysisResult?.providerUsed || '',
+			modelUsed: analysisResult?.modelUsed || ''
 		});
 
 		return res.status(200).json({
 			success: true,
-			message: analysisResult.structured
-				? 'Resume uploaded and analyzed successfully'
-				: 'Resume uploaded and analyzed with fallback feedback',
-			providerUsed: analysisResult.providerUsed,
-			modelUsed: analysisResult.modelUsed,
-			analysis: analysisResult.analysis,
-			structured: analysisResult.structured,
-			parseWarning: analysisResult.parseWarning,
-			analysisRaw: analysisResult.analysisRaw,
+			message: analysisResult
+				? analysisResult.structured
+					? 'Resume uploaded and analyzed successfully'
+					: 'Resume uploaded and analyzed with fallback feedback'
+				: 'Resume uploaded successfully. Analysis did not complete, but you can try again without re-uploading.',
+			providerUsed: analysisResult?.providerUsed || '',
+			modelUsed: analysisResult?.modelUsed || '',
+			analysis: analysisResult?.analysis || null,
+			structured: analysisResult?.structured ?? false,
+			parseWarning: analysisResult?.parseWarning || '',
+			analysisRaw: analysisResult?.analysisRaw || '',
+			analysisError: analysisError?.message || '',
 			file: {
 				originalName: req.file.originalname,
 				fileName: req.file.filename,
@@ -382,19 +393,37 @@ exports.uploadResume = async (req, res) => {
 
 exports.analyzeResume = async (req, res) => {
 	try {
-		const fileName = String(req.body?.fileName || '').trim();
+		const requestedFileName = String(req.body?.fileName || '').trim();
 		const targetRole = String(req.body?.targetRole || '').trim();
+		const userId = req.user._id || req.user.id;
 
-		if (!fileName) {
-			return res.status(400).json({ success: false, message: 'fileName is required' });
+		let uploadLog = null;
+		if (requestedFileName) {
+			uploadLog = await ResumeUploadLog.findOne({
+				userId,
+				fileName: path.basename(requestedFileName),
+			})
+				.sort({ createdAt: -1 })
+				.lean();
+		} else {
+			uploadLog = await ResumeUploadLog.findOne({ userId })
+				.sort({ createdAt: -1 })
+				.lean();
 		}
 
-		const safeFileName = path.basename(fileName);
+		if (!uploadLog?.fileName) {
+			return res.status(400).json({
+				success: false,
+				message: 'Upload a resume first before running analysis.',
+			});
+		}
+
+		const safeFileName = path.basename(uploadLog.fileName);
 		const filePath = path.join(uploadsDir, safeFileName);
 
 		await fs.access(filePath);
 
-		const analysisResult = await analyzeResumeFile(filePath, '', targetRole);
+		const analysisResult = await analyzeResumeFile(filePath, uploadLog.mimeType || '', targetRole);
 
 		return res.status(200).json({
 			success: true,

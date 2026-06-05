@@ -12,6 +12,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "doctor": "npx react-doctor@latest",
+    "diagnostics": "npm --prefix backend run diagnostics",
     "test:unit": "vitest",
     "test:unit:coverage": "vitest --coverage",
     "test:e2e": "playwright test",

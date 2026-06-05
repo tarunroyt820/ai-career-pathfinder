@@ -138,7 +138,17 @@ const limiter = rateLimit({
     max: 300,
     standardHeaders: true,
     legacyHeaders: false,
-    skip: (req) => req.path === '/auth/refresh',
+    skip: (req) => {
+        if (req.path === '/auth/refresh') {
+            return true;
+        }
+
+        if (req.path === '/agreements/inbox') {
+            return true;
+        }
+
+        return /^\/agreements\/[^/]+\/messages$/.test(req.path);
+    },
     message: 'Too many requests, please slow down and try again shortly.'
 });
 app.use('/api/', limiter);
@@ -192,8 +202,8 @@ app.use('/api/skills', skillsRoutes);
 app.use('/api/availability', availabilityRoutes);
 app.use('/api/matches', matchesRoutes);
 app.use('/api/requests', requestsRoutes);
-app.use('/api/agreements', agreementsRoutes);
 app.use('/api/agreements', agreementMessageRoutes);
+app.use('/api/agreements', agreementsRoutes);
 app.use('/api/sessions', sessionsRoutes);
 app.use('/api/disputes', disputesRoutes);
 app.use('/api/reviews', reviewsRoutes);

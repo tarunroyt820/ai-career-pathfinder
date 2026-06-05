@@ -1,5 +1,4 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Brain, Compass, GraduationCap, LineChart, RefreshCw, Shield, Zap, Sparkles, ChevronRight } from "lucide-react";
+import { Brain, BriefcaseBusiness, Compass, GraduationCap, LineChart, RefreshCw, Zap, ChevronRight } from "lucide-react";
 import { Button } from "@/components/common/Button";
 
 const features = [
@@ -49,13 +48,13 @@ const features = [
     imageAlt: "Analytics growth chart dashboard"
   },
   {
-    icon: Shield,
-    title: "Elite Network",
-    description: "Join a gated community of builders. Verified credentials ensure high-quality exchanges every time.",
+    icon: BriefcaseBusiness,
+    title: "Business Insights",
+    description: "Get practical business-facing guidance, market context, and service positioning signals that help turn career growth into real commercial opportunities.",
     color: "from-amber-500/20 to-orange-500/20",
     iconColor: "text-amber-500",
     image: "/images/feature-elite-network.jpg",
-    imageAlt: "Professional elite community network"
+    imageAlt: "Business planning and market strategy workspace"
   },
 ];
 

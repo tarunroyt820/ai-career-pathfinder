@@ -31,12 +31,45 @@ let aiQueue = null;
 let aiWorker = null;
 let queueDisabledReason = null;
 
+function isQueueOperational() {
+  return Boolean(aiQueue) && !queueDisabledReason;
+}
+
 function getAIQueueStatus() {
   return {
-    available: Boolean(aiQueue),
-    processingMode: aiQueue ? 'queued' : 'synchronous',
-    disabledReason: aiQueue ? null : (queueDisabledReason || 'not_initialized'),
+    available: isQueueOperational(),
+    processingMode: isQueueOperational() ? 'queued' : 'synchronous',
+    disabledReason: isQueueOperational() ? null : (queueDisabledReason || 'not_initialized'),
   };
+}
+
+async function disableQueueRuntime(reason, err) {
+  const queueRef = aiQueue;
+  const workerRef = aiWorker;
+
+  aiQueue = null;
+  aiWorker = null;
+  queueDisabledReason = reason;
+
+  if (workerRef) {
+    try {
+      await workerRef.close();
+    } catch (closeErr) {
+      console.warn(`[AI QUEUE] Failed to close worker after runtime failure: ${closeErr.message}`);
+    }
+  }
+
+  if (queueRef) {
+    try {
+      await queueRef.close();
+    } catch (closeErr) {
+      console.warn(`[AI QUEUE] Failed to close queue after runtime failure: ${closeErr.message}`);
+    }
+  }
+
+  if (err) {
+    console.error(`[AI QUEUE] Queue disabled (${reason}): ${err.message}`);
+  }
 }
 
 async function runSynchronousFallback(label, processor) {
@@ -84,14 +117,15 @@ async function initializeQueue() {
 
   try {
     aiQueue = new Queue(AI_QUEUE_NAME, { connection: { url: REDIS_URL } });
+    await aiQueue.waitUntilReady();
+    queueDisabledReason = null;
     console.log(`[AI QUEUE] Queue initialized: ${AI_QUEUE_NAME}`);
 
     // Set up worker process
-    setupWorker();
+    await setupWorker();
   } catch (err) {
     console.error(`[AI QUEUE] Failed to initialize queue: ${err.message}`);
-    aiQueue = null;
-    queueDisabledReason = 'queue_init_failed';
+    await disableQueueRuntime('queue_init_failed', err);
   }
 }
 
@@ -129,13 +163,15 @@ async function setupWorker() {
       { connection: { url: REDIS_URL } }
     );
 
+    await aiWorker.waitUntilReady();
+
     console.log('[AI QUEUE WORKER] Worker started');
 
     aiWorker.on('error', (err) => {
       if (queueDisabledReason !== 'worker_runtime_error') {
         console.error(`[AI QUEUE WORKER] Redis unavailable, falling back to synchronous mode: ${err.message}`);
       }
-      queueDisabledReason = 'worker_runtime_error';
+      void disableQueueRuntime('worker_runtime_error', err);
     });
 
     aiWorker.on('completed', (job) => {
@@ -149,6 +185,7 @@ async function setupWorker() {
     });
   } catch (err) {
     console.error(`[AI QUEUE] Failed to setup worker: ${err.message}`);
+    await disableQueueRuntime('worker_init_failed', err);
   }
 }
 
@@ -251,7 +288,7 @@ async function processRefreshRecommendations(data) {
  * Queue a job to generate milestones for a new plan
  */
 async function queueGenerateMilestones(planId, userId, targetRole, userProfile = {}) {
-  if (!aiQueue) {
+  if (!isQueueOperational()) {
     return runSynchronousFallback('generateMilestones', async () => {
       const plan = await CareerPlan.findById(planId);
       if (!plan) {
@@ -297,7 +334,38 @@ async function queueGenerateMilestones(planId, userId, targetRole, userProfile =
     return { queued: true, jobId: job.id, processingMode: 'queued', reason: null };
   } catch (err) {
     console.error(`[AI QUEUE] Failed to queue job: ${err.message}`);
-    throw err;
+    await disableQueueRuntime('queue_add_failed', err);
+    return runSynchronousFallback('generateMilestones', async () => {
+      const plan = await CareerPlan.findById(planId);
+      if (!plan) {
+        return;
+      }
+
+      const milestones = await recommendationService.generateMilestones(
+        targetRole,
+        userProfile,
+        []
+      );
+      const roadmap = recommendationService.buildRoadmapFromMilestones(
+        targetRole,
+        milestones
+      );
+      const recommendations = await recommendationService.generateRecommendations(
+        {
+          ...plan.toObject(),
+          milestones,
+          roadmap,
+        },
+        userProfile
+      );
+      plan.milestones = milestones;
+      plan.roadmap = roadmap;
+      plan.recommendations = recommendations;
+      plan.aiReady = true;
+      plan.aiGeneratedAt = new Date();
+      plan.aiLastRefreshAt = new Date();
+      await plan.save();
+    });
   }
 }
 
@@ -305,7 +373,7 @@ async function queueGenerateMilestones(planId, userId, targetRole, userProfile =
  * Queue a job to refresh recommendations for a plan
  */
 async function queueRefreshRecommendations(planId, userId, userProfile = {}) {
-  if (!aiQueue) {
+  if (!isQueueOperational()) {
     return runSynchronousFallback('refreshRecommendations', async () => {
       const plan = await CareerPlan.findById(planId);
       if (!plan) {
@@ -327,7 +395,15 @@ async function queueRefreshRecommendations(planId, userId, userProfile = {}) {
     return { queued: true, jobId: job.id, processingMode: 'queued', reason: null };
   } catch (err) {
     console.error(`[AI QUEUE] Failed to queue job: ${err.message}`);
-    throw err;
+    await disableQueueRuntime('queue_add_failed', err);
+    return runSynchronousFallback('refreshRecommendations', async () => {
+      const plan = await CareerPlan.findById(planId);
+      if (!plan) {
+        return;
+      }
+
+      await recommendationService.refreshPlanAI(plan, userProfile);
+    });
   }
 }
 
@@ -335,7 +411,7 @@ async function queueRefreshRecommendations(planId, userId, userProfile = {}) {
  * Get job status
  */
 async function getJobStatus(jobId) {
-  if (!aiQueue) {
+  if (!isQueueOperational()) {
     const status = getAIQueueStatus();
     return {
       id: jobId,

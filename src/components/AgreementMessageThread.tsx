@@ -10,9 +10,10 @@ import { inputClass } from "@/components/skill-exchange/shared";
 interface Props {
   agreementId: string;
   disabled?: boolean;
+  autoRefreshIntervalMs?: number | null;
 }
 
-const AgreementMessageThread = ({ agreementId, disabled = false }: Props) => {
+const AgreementMessageThread = ({ agreementId, disabled = false, autoRefreshIntervalMs = null }: Props) => {
   const [messages, setMessages] = useState<AgreementMessageItem[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -38,12 +39,16 @@ const AgreementMessageThread = ({ agreementId, disabled = false }: Props) => {
   }, [loadMessages]);
 
   useEffect(() => {
+    if (!autoRefreshIntervalMs || autoRefreshIntervalMs <= 0) {
+      return undefined;
+    }
+
     const interval = setInterval(() => {
       loadMessages();
-    }, 15000);
+    }, autoRefreshIntervalMs);
 
     return () => clearInterval(interval);
-  }, [loadMessages]);
+  }, [autoRefreshIntervalMs, loadMessages]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -84,7 +89,12 @@ const AgreementMessageThread = ({ agreementId, disabled = false }: Props) => {
     <div className="mt-4 rounded-2xl border border-[rgba(22,160,133,0.25)] bg-[rgba(10,14,39,0.5)] p-4">
       <div className="mb-2 flex items-center justify-between">
         <h4 className="text-sm font-semibold uppercase tracking-wide text-[rgba(189,216,233,0.85)]">Agreement Messages</h4>
-        {loading && <p className="text-xs text-[rgba(189,216,233,0.75)]">Loading…</p>}
+        <div className="flex items-center gap-2">
+          {loading && <p className="text-xs text-[rgba(189,216,233,0.75)]">Loading...</p>}
+          <Button variant="outline" onClick={loadMessages} disabled={loading}>
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {error && <p className="mb-2 text-sm text-red-300">{error}</p>}
@@ -123,11 +133,11 @@ const AgreementMessageThread = ({ agreementId, disabled = false }: Props) => {
             }
           }}
           disabled={disabled || sending}
-          placeholder={disabled ? "Messaging is disabled for non-active agreements." : "Type a message…"}
+          placeholder={disabled ? "Messaging is disabled for non-active agreements." : "Type a message..."}
           maxLength={2000}
         />
         <Button onClick={handleSend} disabled={disabled || sending || !input.trim()}>
-          {sending ? "Sending…" : "Send"}
+          {sending ? "Sending..." : "Send"}
         </Button>
       </div>
     </div>

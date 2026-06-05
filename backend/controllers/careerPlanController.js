@@ -1,6 +1,7 @@
 const careerPlanService = require('../services/careerPlanService');
 const { queueGenerateMilestones, queueRefreshRecommendations, getAIQueueStatus } = require('../queues/aiQueue');
 const CareerPlan = require('../models/CareerPlan');
+const recommendationService = require('../services/recommendationService');
 
 /**
  * Create a new career plan.
@@ -113,7 +114,23 @@ exports.getPlan = async (req, res) => {
     const userId = req.user._id.toString();
     const planId = req.params.id;
 
-    const plan = await careerPlanService.getPlanById(planId, userId);
+    let plan = await careerPlanService.getPlanById(planId, userId);
+
+    if (!plan.aiReady && (!Array.isArray(plan.milestones) || plan.milestones.length === 0)) {
+      try {
+        const hydratedPlan = await CareerPlan.findById(planId);
+        if (hydratedPlan && hydratedPlan.userId.toString() === userId) {
+          const repairedPlan = await recommendationService.refreshPlanAI(hydratedPlan, {
+            experience: '',
+            resume: '',
+          });
+          plan = repairedPlan.toObject();
+        }
+      } catch (repairErr) {
+        console.warn(`[CONTROLLER] Failed to auto-repair stuck plan ${planId}: ${repairErr.message}`);
+      }
+    }
+
     return res.status(200).json({ success: true, data: plan });
   } catch (err) {
     console.error('getPlan error:', err);

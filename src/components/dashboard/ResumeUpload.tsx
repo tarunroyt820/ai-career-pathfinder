@@ -56,7 +56,7 @@ export function ResumeUpload() {
     const nextAnalysisRaw = String(payload?.analysisRaw || "");
     const isStructured = payload?.structured !== false;
     const nextMessage = String(
-      payload?.parseWarning || payload?.message || "",
+      payload?.analysisError || payload?.parseWarning || payload?.message || "",
     );
 
     setAnalysis(nextAnalysis);
@@ -69,6 +69,8 @@ export function ResumeUpload() {
       toast.success("Resume analyzed successfully!");
     } else if (nextAnalysisRaw) {
       toast.warning("Resume analyzed with fallback AI feedback.");
+    } else if (payload?.file?.fileName || uploadedFileName) {
+      toast.warning(nextMessage || "Resume uploaded. Analysis can be retried without re-uploading.");
     } else {
       toast.error("Resume analysis finished, but no AI feedback was returned.");
     }
@@ -105,7 +107,7 @@ export function ResumeUpload() {
   };
 
   const handleReanalyze = async () => {
-    if (!uploadedFileName) {
+    if (!uploadedFileName && !uploaded) {
       toast.error("Upload a resume first before updating the analysis.");
       return;
     }
