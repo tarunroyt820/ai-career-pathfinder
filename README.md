@@ -105,9 +105,13 @@ MongoDB    Redis     AI Layer
 
 ### AI Providers
 - Groq
+  :https://groq.com/
 - Hugging Face
+  :https://huggingface.co/
 - NVIDIA
+  :https://build.nvidia.com/models
 - OpenRouter
+  :https://openrouter.ai/
 
 ### Queue Processing
 - Redis
