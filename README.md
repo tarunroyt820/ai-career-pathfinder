@@ -127,6 +127,49 @@ MongoDB    Redis     AI Layer
 
 ---
 
+## 📸 Screenshots
+
+### Landing Page
+
+![Landing Page](screenshots/landing-page.png)
+
+### Login Page
+
+![Login Page](screenshots/login-page.png)
+
+### Signup Page
+
+![Signup Page](screenshots/signup-page.png)
+
+### Dashboard
+
+![Dashboard](screenshots/dashboard.png)
+
+### Career Path Generator
+
+![Career Path](screenshots/career-path.png)
+
+### Skill Gap Analysis
+
+![Skill Gap](screenshots/skill-gap.png)
+
+### Learning Roadmap
+
+![Learning](screenshots/learning.png)
+
+### Skill Exchange
+
+![Skill Exchange](screenshots/skill-exchange.png)
+
+### AI Assistant
+
+![AI Assistant](screenshots/ai-assistant.png)
+
+### Resume Upload & Analysis
+
+![Resume Upload](screenshots/resume-upload.png)
+
+
 ## 📂 Project Structure
 
 ```text
